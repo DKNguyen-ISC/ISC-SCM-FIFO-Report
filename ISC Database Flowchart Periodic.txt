@@ -1,0 +1,658 @@
+---
+config:
+  layout: elk
+  theme: neo
+---
+flowchart LR
+    %% ========================================
+    %% FLOWCHART v56.0 (ENHANCED MASTER)
+    %% UPDATED: All new pipelines from v3.3 source code
+    %% ========================================
+    linkStyle default stroke-width:2px,stroke:#555555,fill:none
+
+    %% ========================================
+    %% 📖 LEGEND & KEY
+    %% ========================================
+    subgraph Legend ["📖 LEGEND & KEY"]
+        direction TB
+        
+        classDef master fill:#ecf9ff,stroke:#51abff,stroke-width:3px,font-size:14px
+        classDef staging fill:#f8fff1,stroke:#7dd253,stroke-width:3px,font-size:14px
+        classDef transaction_document fill:#faf3ff,stroke:#9562dc,stroke-width:3px,font-size:14px
+        classDef transaction_document_draft fill:#ffffff,stroke:#e11d48,stroke-width:2px,stroke-dasharray:5,font-size:14px
+        classDef transaction_event fill:#fffcec,stroke:#fbc14e,stroke-width:3px,font-size:14px
+        classDef transaction_log fill:#f1f5f9,stroke:#475569,stroke-width:2px,font-size:14px
+        classDef virtual_view fill:#e0f2fe,stroke:#0284c7,stroke-width:2px,stroke-dasharray:5,shape:rect,font-size:14px
+        classDef logic_gate fill:#fffbe6,stroke:#f59e0b,stroke-width:3px,shape:rhombus,font-size:13px
+        classDef input fill:#ffffff,stroke:#9562dc,stroke-width:2px,stroke-dasharray:3,font-size:14px
+        classDef junction fill:#fef3c7,stroke:#f59e0b,stroke-width:2px,stroke-dasharray:2,font-size:14px
+        classDef logic_script fill:#f3e8ff,stroke:#9333ea,stroke-width:2px,font-size:13px,stroke-dasharray:5
+        classDef external fill:#fff4f3,stroke:#ff797b,stroke-width:3px,stroke-dasharray:5,font-size:14px,padding:15px
+        classDef hub fill:#f1f5f9,stroke:#334155,stroke-width:4px,font-size:14px,stroke-dasharray: 0
+
+        %% Group 1: The Data Storage
+        subgraph Leg_Data ["💾 Data Entities"]
+            direction LR
+            L1[("Master Data")]:::master
+            L3["Document"]:::transaction_document
+            L12[("💠 The Status Hub")]:::hub
+            L5[/"Log / Stream"/]:::transaction_log
+        end
+
+        %% Group 2: The Workflow Steps
+        subgraph Leg_Process ["⚙️ Processing & State"]
+            direction LR
+            L2{{"Staging Layer"}}:::staging
+            L4["Event / Engine"]:::transaction_event
+            L8[/"User Input / Draft"/]:::input
+            L9("🔗 Junction"):::junction
+        end
+
+        %% Group 3: The Brains
+        subgraph Leg_Logic ["🧠 System Logic"]
+            direction LR
+            L7{"Logic Gate"}:::logic_gate
+            L6[["Virtual View"]]:::virtual_view
+            L10("System Script"):::logic_script
+            L11[/"External System"/]:::external
+        end
+    end
+
+    %% ========================================
+    %% 🏛️ LAYER 1: MASTER DATA
+    %% ========================================
+    subgraph L1_Master ["🏛️ LAYER 1: MASTER DATA"]
+        direction TB
+        
+        BOM_Data[("📚 BOM_Data [H]
+        (Definition Only)")]:::master
+        
+        Stock_Data[("📦 Stock_Data
+        (Tier 2 Source) [A]
+        (Snapshot of Monday)
+        (Physical On-Hand)
+        [Has FULFILLMENT_MODE]
+        -------------------
+        ID: STK_ + MD5")]:::master
+        
+        Supplier_Information[("🏢 Supplier_Information [H]")]:::master
+        Supplier_Capacity[("💲 Supplier_Capacity")]:::master
+
+        Material_Issuance[("📦 Material_Issuance
+        (Warehouse Issuance Data)
+        -------------------
+        ID: ISU_ + MD5
+        [Feeds Material_Demand_VIEW]")]:::master
+
+        %% Hierarchy Definition
+        Supplier_Information -.Provide detail for (1:N)-.-> Supplier_Capacity
+    end
+
+    %% ========================================
+    %% ⚙️ LAYER 2: STAGING LAYER
+    %% ========================================
+    subgraph L2_Staging ["⚙️ LAYER 2: STAGING"]
+        direction TB
+        
+        PR_Staging{{"📝 PR_Staging"}}:::staging
+        Stock_Count_Staging{{"🔍 Stock_Count_Staging"}}:::staging
+
+        Supplier_Information_Staging{{"🔍 Supplier_Information_Staging
+        (Val: New Supplier)"}}:::staging
+
+        Supplier_Capacity_Staging{{"⚙️ Supplier_Capacity_Staging
+        (New Price/LeadTime)"}}:::staging
+
+        Material_Issuance_Staging{{"📦 Material_Issuance_Staging
+        (CSV Issuance Upload)"}}:::staging
+
+        %% Self-Healing Logic (Strictly Upserts)
+        Supplier_Information_Staging -."Register New (1:1)"-.-> Supplier_Information
+        Supplier_Capacity_Staging -."Update History (1:1)".-> Supplier_Capacity
+        Material_Issuance_Staging -."MERGE (Upsert)"-.-> Material_Issuance
+    end
+
+    %% ========================================
+    %% 🔄 LAYER 3: OPERATIONS (Modules 1, 2, 3)
+    %% ========================================
+    subgraph L3_Processes ["🔄 LAYER 3: OPERATIONS"]
+        direction LR
+
+        %% ─────────────────────────────────────
+        %% MODULE 1: PLANNING (ENHANCED v56.0)
+        %% ─────────────────────────────────────
+        subgraph M1_Planning ["🗓️ M1: PLANNING (The Demand Engine)"]
+            direction TB
+            
+            %% ==========================================
+            %% 1. INPUT LAYER (Transient Forms)
+            %% ==========================================
+            subgraph GSheet_Context ["📂 Input GSheet File"]
+                direction TB
+                Production_Order_Draft[/"📝 Production_Order_Draft
+                (Transient Header)
+                (Header + VPO)
+                [Transient Form]"/]:::input
+
+                BOM_Order_List_Draft[/"📝 BOM_Order_List_Draft
+                (Transient Line Input)
+                [Has: Strategy Note]
+                [NO DateCode]
+                [Cleared after Upload]"/]:::input
+                
+                Production_Order_Draft -- "Context (1:N)" --> BOM_Order_List_Draft
+            end
+
+            %% ==========================================
+            %% 2. STAGING LAYER (The Queue)
+            %% ==========================================
+            Production_Order["🏭 Production_Order [H]
+            -------------------
+            ID: P_ORDER_ID
+            [Source of VPO]
+            🚩 DATA_STATE:
+            (Processing / Partial / Released)
+            (CANCELLED / COMPLETED)
+            -------------------
+            Cancellation Protocol:
+            FORCE_CLOSE_QTY
+            CANCELLATION_REASON"]:::transaction_document
+
+            BOM_Order_List_Staging{{"⚙️ BOM_Order_List_Staging
+            [The Logbook]
+            -------------------
+            ID: Hash(PO+BOM)
+            VALIDATION_STATUS"}}:::staging
+
+            %% The Handoff
+            Production_Order_Draft -- "1. Uploads to (1:1)" --> Production_Order
+            BOM_Order_List_Draft -- "1. Uploads to (1:1)" --> BOM_Order_List_Staging
+
+            %% ==========================================
+            %% 3. THE LOGIC GATE (Brain)
+            %% ==========================================
+            Split_Batch_Gate{"⚙️ SP_SPLIT_BATCH_GATE
+            (The Logic Engine)
+            -------------------
+            1. Safe Merge Protocol
+            2. Promotes Valid -> Gen ID (DEM_ + MD5)
+            3. Maps Strategy Note
+            4. Flags Skeletons
+            5. Updates Header Status"}:::logic_gate
+
+            BOM_Order_List_Staging -- "2. Triggers (1:1)" --> Split_Batch_Gate
+
+            %% PATH A: SUCCESS (The Happy Path)
+            BOM_Order_List_Final["🧾 BOM_Order_List_Final
+            (Valid Items)
+            -------------------
+            [Payload: VPO + Note]"]:::transaction_document
+            
+            Split_Batch_Gate -- "PASS (Promotes)" --> BOM_Order_List_Final
+            
+            Material_Demand_VIEW[["📊 Material_Demand_VIEW
+                (Live Projection)
+                -------------------
+                Dual-Method Demand:
+                SHORTAGE_COMPLETION
+                SHORTAGE_ISSUANCE
+                GROSS_DEMAND_QTY
+                -------------------
+                Classification:
+                MAIN_GROUP, SUB_GROUP, PIC
+                [Groups by VPO]
+                [SCD2 Shield Applied]
+                [Zombie + 99% Gates]"]]:::virtual_view
+                
+            BOM_Order_List_Final -. "Projected by View" .-> Material_Demand_VIEW
+
+            %% ==========================================
+            %% 4. THE SELF-HEALING LOOP (Exception Handling)
+            %% ==========================================
+            subgraph Data_Steward_Loop ["🔄 The Data Steward Loop"]
+                direction TB
+                
+                BOM_Data_Staging{{"⚙️ BOM_Data_Staging
+                (Skeleton Queue)"}}:::staging
+
+                View_Skeleton_Feed[["👀 View_Skeleton_Feed
+                (To-Do List)"]]:::virtual_view
+                
+                Data_Steward_Action[/"🧑‍💻 User Edits
+                (Fixes Desc/Unit)"/]:::input
+                
+                SP_Merge_Logic("⚙️ SP_M1_MASTER_MERGE
+                (Hydration Engine)"):::logic_script
+
+                %% The Flow
+                Split_Batch_Gate -- "FAIL (Creates Skeleton)" --> BOM_Data_Staging
+                
+                BOM_Data_Staging -. "Feeds (Read-Only)" .-> View_Skeleton_Feed
+                View_Skeleton_Feed -- "User Fetches" --> Data_Steward_Action
+                Data_Steward_Action -- "User Uploads" --> SP_Merge_Logic
+                SP_Merge_Logic -- "Hydrates (Upsert)" --> BOM_Data
+            end
+
+            %% ==========================================
+            %% 5. THE RESOLUTION (Closing the Loop)
+            %% ==========================================
+            Re_Upload_Event[/"🔁 Planner Re-Uploads
+            (Fixed Line Only)"/]:::input
+            
+            %% Logic: Fixed Master -> Allows Re-upload -> Hits Staging -> Hits Gate
+            BOM_Data -. "Enables Validity" .-> Re_Upload_Event
+            Re_Upload_Event -- "Retries" --> BOM_Order_List_Staging
+
+            %% The Critical Status Update
+            Split_Batch_Gate -. "Updates Status
+            (Partially -> Released)" .-> Production_Order
+
+            %% ==========================================
+            %% 6. PRODUCTION STATUS PROTOCOL (NEW v56)
+            %% ==========================================
+            subgraph PSP_Protocol ["📊 Production Status Protocol"]
+                direction TB
+
+                Production_Status_Log[/"📜 Production_Status_Log
+                (Manual + Auto Bridge)
+                -------------------
+                SOURCE: MANUAL_PORTAL / AUTO_BRIDGE"/]:::transaction_log
+
+                SP_Commit_Status("⚙️ SP_M1_COMMIT_STATUS_LOG
+                (FIFO + Ghost Deduction)"):::logic_script
+
+                Production_Status_Portal_VIEW[["👁️ Production_Status_Portal_VIEW
+                (Active Orders Only)
+                [Ghost Context]"]]:::virtual_view
+
+                Closed_Order_Ghost_VIEW[["👻 Closed_Order_Ghost_VIEW
+                (Ghost Calculator)
+                [Completed/Cancelled Qty]"]]:::virtual_view
+
+                %% Wiring
+                Production_Status_Log -- "Triggers" --> SP_Commit_Status
+                SP_Commit_Status -- "Updates Completion" --> Production_Order
+                Closed_Order_Ghost_VIEW -. "Ghost Qty" .-> SP_Commit_Status
+            end
+
+            %% ==========================================
+            %% 7. CS STATUS PROTOCOL (NEW v56)
+            %% ==========================================
+            subgraph CS_Protocol ["📢 CS Status Protocol"]
+                direction TB
+
+                CS_Status_Discrepancy_Log[/"📢 CS_Status_Discrepancy_Log
+                (Alerts: ZOMBIE / DROP / QTY_MISMATCH)"/]:::transaction_log
+
+                CS_Resolution_Staging{{"📝 CS_Resolution_Staging
+                (Planner Decisions)"}}:::staging
+
+                SP_CS_Sync("⚙️ SP_M1_CS_STATUS_SYNC
+                (Discrepancy Detection)"):::logic_script
+
+                SP_Apply_Resolution("⚙️ SP_M1_APPLY_RESOLUTION
+                (Resolution Merge)"):::logic_script
+
+                %% Wiring
+                SP_CS_Sync -- "Creates Alerts" --> CS_Status_Discrepancy_Log
+                CS_Resolution_Staging -- "Triggers" --> SP_Apply_Resolution
+                SP_Apply_Resolution -- "Applies Fix" --> Production_Order
+                SP_Apply_Resolution -. "Resolves" .-> CS_Status_Discrepancy_Log
+            end
+        end
+
+        %% ─────────────────────────────────────
+        %% THE STATUS HUB (The Bridge)
+        %% ─────────────────────────────────────
+        subgraph The_Status_Hub ["🔄 THE STATUS HUB"]
+            direction TB
+            PO_Line_Tracking[("🔄 PO_Line_Tracking
+            (Supply Source)
+            (In-Transit / Open)
+            (State: Active/Cancelled)
+            [Includes: VPO]
+            [LAST_SEEN_IN_SYNC]")]:::hub
+        end
+
+        %% ─────────────────────────────────────
+        %% MODULE 2: BALANCING (Project-Aware ATP)
+        %% ─────────────────────────────────────
+        subgraph M2_Balancing ["⚖️ M2: BALANCING (Project-Aware ATP)"]
+            direction TB
+            
+            Unified_Supply_Stack[["📑 Unified_Supply_Stack
+            -----------------------
+            Row 1: Stock_Data [A]
+            Row 2: PO_Line_Tracking
+            (Filter: Public Only)
+            (Sorted by Original ETA)"]]:::virtual_view
+
+            Fulfillment_Mode{"1️⃣ Fulfillment 
+            Mode?"}:::logic_gate
+            
+            Matching_Engine("⚙️ SP_RUN_MATCHING_ENGINE
+            (FIFO by VPO)
+            (Uses GROSS_DEMAND_QTY)
+            -----------------------
+            [Set-Based Parallel Calculation]
+            [Placeholder Protocol]
+            [Groups: VPO vs General]
+            (No Loops/UDF)"):::transaction_event
+            
+            Gate_Result{"2️⃣ Match Result?"}:::logic_gate
+
+            Hard_Reserve("📦 Peg: HARD_RESERVE
+            (Stock Success)"):::transaction_event
+            
+            Soft_Link("🔗 Peg: SOFT_LINK
+            (Reserved on Arrival)"):::transaction_event
+            
+            PR_Draft["⛔ PR_Draft
+            (Shortage / Private)
+            -------------------
+            ID: PRD_ + MD5
+            [Carries: VPO + Note]"]:::transaction_document_draft
+
+            Pegging_Allocations["🔗 Pegging_Allocations
+            (Traceability Log)
+            [ID: ALG_ + MD5]"]:::transaction_document
+
+            %% M2 Analytics (NEW v56)
+            M2_Pipeline_Ledger[/"📊 M2_Pipeline_Ledger
+            (Daily Archive)
+            [Dual-Method Preservation]"/]:::transaction_log
+
+            M2_Daily_Stats[/"📈 M2_Daily_Stats
+            (Run Health Metrics)"/]:::transaction_log
+
+            %% Wiring M2
+            Material_Demand_VIEW -. "Feeds (Live) (1:1)" .-> Fulfillment_Mode
+            Fulfillment_Mode -- "PRIVATE (MTO) (1:1)" --> PR_Draft
+            Fulfillment_Mode -- "PUBLIC (FIFO)" --> Matching_Engine
+            Unified_Supply_Stack -."Feeds Availability (Lookup)".-> Matching_Engine
+            
+            %% The Split Logic
+            Matching_Engine -- "Calculates Allocation (1:N Split)" --> Gate_Result
+            
+            Gate_Result -- "Source: Stock (Subset)" --> Hard_Reserve
+            Gate_Result -- "Source: PO (Subset)" --> Soft_Link
+            Gate_Result -- "Shortage (Remainder)" --> PR_Draft
+
+            Hard_Reserve -- "Logs (1:1)" --> Pegging_Allocations
+            Soft_Link -- "Logs (1:1)" --> Pegging_Allocations
+
+            %% M2 Analytics Wiring (NEW)
+            Matching_Engine -. "Archives Run" .-> M2_Pipeline_Ledger
+            Matching_Engine -. "Logs Health" .-> M2_Daily_Stats
+        end
+
+        %% ─────────────────────────────────────
+        %% MODULE 3: PROCUREMENT (Split Brain Firewall)
+        %% ─────────────────────────────────────
+        subgraph M3_Procurement ["🧑‍💼 M3: PROCUREMENT (Dual-Path + Split Brain Firewall)"]
+            direction TB
+            
+            Assign_Sourcing("🧑‍💻 Assign_Sourcing
+            (The Decision)
+            [Logic: Risk Flag &
+            Capture Applied Rules]
+            -------------------
+            Input: Date Code
+            Context: Strategy Note (Read-Only)"):::transaction_event
+
+            PR_Final["📝 PR_Final [H]
+            (Status: PENDING -> CONSOLIDATED)
+            -------------------
+            Status: OPEN -> CONSOLIDATED
+            [Payload: VPO + Strategy Note]"]:::transaction_document
+            
+            %% 1. THE CHECK
+            Gate_Consolidation{"🔍 Ready to Consolidate?
+            (Status = PENDING?)
+            (Status = OPEN?)"}:::logic_gate
+
+            %% 2. THE ENGINE
+            PO_Consolidation_Event("⚙️ SP_M3_CONSOLIDATE_BATCH
+            (The Factory)
+            (Batch ID, Rule, Time)
+            [The 'Act' of Buying]
+            -------------------
+            1. Groups by Supplier
+            2. Splits by VPO (Project-Aware)
+            3. FIREWALL: Blocks Strategy Note"):::transaction_event
+            
+            %% 3. PATH A: THE AUDIT TRAIL
+            PR_PO_Consolidation("🔗 PR_PO_Consolidation
+            (Junction: Audit Trail)
+            [Merge (N:1) & Split (1:N)]
+            [M:N Link]
+            - Consolidation Reason
+            - Qty Allocation"):::junction
+
+            %% 4. PATH B: THE DOCUMENT
+            PO_Header["📄 PO_Header [H]
+            (Status: ISSUED)
+            (Status: DRAFT -> ISSUED)
+            -------------------
+            PO_ORIGIN: SYSTEM /
+            DIRECT_INJECTION /
+            ZXH_AUTO_SYNC"]:::transaction_document
+            
+            PO_Line["📄 PO_Line
+            (Item Details + PR_FK)
+            [Execution Reality]
+            -------------------
+            [Includes: VPO]
+            [Includes: PO_Line_Note (Instruction)]
+            [Excludes: Strategy Note]"]:::transaction_document
+
+            %% Wiring M3
+            PR_Draft -- "Input (1:1)" --> Assign_Sourcing
+            Assign_Sourcing -- "Generates (1:1)" --> PR_Staging
+            PR_Staging -- "Approve" --> PR_Final
+            
+            %% The Check Logic
+            PR_Final -- "Inputs to (1:1 Stream)" --> Gate_Consolidation
+            
+            %% THE FUNNEL (N PRs -> 1 Event)
+            Gate_Consolidation -- "YES (N:1 Grouping)" --> PO_Consolidation_Event
+            
+            %% Path A: The Intent (Log)
+            PO_Consolidation_Event -- "Logs Decision (1:N)" --> PR_PO_Consolidation
+            PR_Final -."Tracked in (1:N)".-> PR_PO_Consolidation
+            
+            %% Path B: The Execution (Document)
+            PO_Consolidation_Event -- "Creates Header (1:N)" --> PO_Header
+            PO_Header -- "Contains (1:N)" --> PO_Line
+            
+            %% The Execution FK (Fast Speed)
+            PR_Final -."Linked FK (1:N Link) (Fast Trace FK)".-> PO_Line
+            
+            %% Feedback to Hub (Execution Path Only)
+            PO_Line -- "Initializes (1:1) (Atomic)" --> PO_Line_Tracking
+            
+            %% CRITICAL: The Status Loop
+            PO_Consolidation_Event -."Updates Status (1:N Update)".-> PR_Final
+        end
+
+        %% ─────────────────────────────────────
+        %% EXTERNAL LOGISTICS (Updated v56.0 - Full Scope)
+        %% ─────────────────────────────────────
+        subgraph External_Feedback ["🌍 M4: LOGISTICS & FEEDBACK"]
+            direction TB
+            
+            %% 1. THE INTERACTIVE PORTAL
+            UI_Supplier_Portal[/"🖥️ UI_Supplier_Portal
+            (User Input / GSheet)
+            [Validation & Batching]"/]:::input
+            
+            Supplier_Feedback_Log[/"📜 Supplier_Feedback_Log
+            (Immutable History)
+            [Source: Manual/EDI/API]"/]:::transaction_log
+            
+            %% 2. THE MONDAY MORNING PROTOCOL (Updated v56.0)
+            subgraph Monday_Protocol ["📅 THE MONDAY PROTOCOL (Synchronous Chain)"]
+                direction TB
+                
+                %% Step 1: Ingest
+                Stock_Count_Upload("📤 Stock_Count_Upload
+                (The Trash Bin)
+                [Raw Audit Trail]
+                -------------------
+                Contains: WAREHOUSE_ID
+                EXTRACTED_SNAPSHOT_DATE
+                Action: Truncate & Load"):::input
+
+                %% Step 2: Filter
+                SP_Filter("⚙️ SP_M4_FILTER
+                (The Strict Relevance Engine)
+                -------------------
+                1. Validate: RAW_BOM_UPDATE in BOM_Order_List_Final
+                2. Aggregate: SUM(QTY) by BOM_UPDATE
+                   Atomic Snapshot (Last Batch Wins)
+                3. Uses EXTRACTED_SNAPSHOT_DATE
+                   (Stability Protocol)"):::logic_script
+                
+                %% Step 3: Analyze
+                SP_Variance("🧮 SP_M4_VARIANCE_CALC
+                (The Truth Logic)
+                -------------------
+                Formula: (Count - Last_Stock) + Consumption
+                -------------------
+                Gate A: Implied < Promise = Late Delivery (No Alert)
+                Gate B: Implied > Promise = Zombie Stock (Flag)
+                Gate C: Implied ≈ Promise = True Loss
+                [Logs: ZOMBIE / LOSS]"):::logic_script
+               
+                %% Step 4: Output Log
+                Inventory_Variance_Log[/"📉 Inventory_Variance_Log
+                (Permanent Audit Record)"/]:::transaction_log
+                
+                %% Step 5: Janitor
+                SP_Janitor("🧹 SP_M4_JANITOR
+                (The Insurance Policy)
+                -------------------
+                Trigger: ETA < (Snapshot - 7 Days)
+                Action: Status='ASSUMED_RECEIVED', Active=FALSE
+                -------------------
+                Risk Acceptance: The '1% Rule'
+                (Prioritize Monday Truth over late trucks)
+                [Closes Old POs]"):::logic_script
+
+                %% Step 6: Reset
+                SP_Reset("📦 SP_M4_RESET_STOCK
+                (The System of Record)
+                -------------------
+                Action: Overwrite Stock_Data
+                Logic: Inject Privacy Mode
+                (If Group='Bao Bì' -> Private)
+                ID Gen: STK_ + MD5"):::logic_script
+            end
+
+            %% 3. ZXH PO AUTO SYNC (NEW v56)
+            subgraph ZXH_Sync ["🔄 ZXH PO AUTO SYNC (Nightly)"]
+                direction TB
+
+                ZXH_PO_AutoSync_Staging{{"📋 ZXH_PO_AutoSync_Staging
+                (External ZXH Data)
+                -------------------
+                ID Prefix: ZXH_DOC_ / ZXH_LINE_"}}:::staging
+
+                SP_Sync_ZXH("⚙️ SP_SYNC_ZXH_PO
+                (PO_ORIGIN = ZXH_AUTO_SYNC)
+                -------------------
+                Creates/Updates:
+                PO_Header + PO_Line + Tracking"):::logic_script
+            end
+
+            %% 4. DIRECT INJECTION PORTAL (NEW v56)
+            subgraph Injection_Portal ["🏭 DIRECT INJECTION PORTAL"]
+                direction TB
+
+                PO_Direct_Injection_Staging[/"🖥️ PO_Direct_Injection_Staging
+                (Session-Based Input)
+                -------------------
+                ID Prefix: INJ_DOC_ / INJ_LINE_"/]:::input
+
+                SP_Inject_Direct("⚙️ SP_INJECT_DIRECT_PO
+                (PO_ORIGIN = DIRECT_INJECTION)
+                -------------------
+                Validates + Creates:
+                PO_Header + PO_Line + Tracking"):::logic_script
+            end
+            
+            %% ========================================
+            %% WIRING THE LOGIC
+            %% ========================================
+
+            %% A. SUPPLIER FEEDBACK FLOW
+            PO_Line_Tracking -."Feeds Context (1:1)".-> UI_Supplier_Portal
+            UI_Supplier_Portal -- "Syncs to (N:N Batch)" --> Supplier_Feedback_Log
+            Supplier_Feedback_Log -- "Triggers Update/Cancel (1:1 Update)" --> PO_Line_Tracking
+
+            %% B. MONDAY PROTOCOL FLOW (v56.0)
+            Stock_Count_Upload -- "1. Reads Raw" --> SP_Filter
+            SP_Filter -- "2. Inserts Valid (N:1 Aggregation)" --> Stock_Count_Staging
+            Stock_Count_Staging -- "3. Triggers" --> SP_Variance
+            
+            SP_Variance -- "4a. Logs Verdict (1:1 Log)" --> Inventory_Variance_Log
+            SP_Variance -- "4b. Chains Next" --> SP_Janitor
+            
+            SP_Janitor -- "5. Kills Old POs (Update)" --> PO_Line_Tracking
+            SP_Janitor -- "6. Chains Next" --> SP_Reset
+            
+            SP_Reset -- "7. Resets Truth (1:1 Overwrite)" --> Stock_Data
+
+            %% C. ZXH AUTO SYNC FLOW (NEW)
+            ZXH_PO_AutoSync_Staging -- "Triggers Sync" --> SP_Sync_ZXH
+            SP_Sync_ZXH -- "Creates/Updates" --> PO_Line_Tracking
+
+            %% D. DIRECT INJECTION FLOW (NEW)
+            PO_Direct_Injection_Staging -- "Triggers Injection" --> SP_Inject_Direct
+            SP_Inject_Direct -- "Creates (Atomic)" --> PO_Line_Tracking
+        end
+    end
+    
+    %% ========================================
+    %% CRITICAL DATA LINKS (Cross-Module)
+    %% ========================================
+    BOM_Data -."Validates (1:N)".-> BOM_Order_List_Final
+    BOM_Data -."Classification JOIN (MAIN_GROUP, SUB_GROUP, PIC)".-> Material_Demand_VIEW
+    Material_Issuance -."Issuance JOIN (SHORTAGE_ISSUANCE)".-> Material_Demand_VIEW
+    
+    Stock_Data -- "Feeds Stack (1:1)" --> Unified_Supply_Stack
+    PO_Line_Tracking -- "Feeds Stack (1:1)" --> Unified_Supply_Stack
+    
+    %% Allocation points back to Source
+    Pegging_Allocations -."Drawdown (N:1 Link)".-> Stock_Data
+    Pegging_Allocations -."Commit Qty (N:1 Link)".-> PO_Line_Tracking
+
+    Supplier_Capacity -.-> |"Reads LEAD_TIME & Price (1:N Lookup)"| Assign_Sourcing
+
+    %% SELF-HEALING FEEDBACK LOOPS (M3)
+    Assign_Sourcing -.-> |"Scenario 1: Heal Capacity (1:1 Push)"| Supplier_Capacity_Staging
+    Assign_Sourcing -.-> |"Scenario 2: Heal Vendor (1:1 Push)"| Supplier_Information_Staging
+    
+    %% Static Privacy Lookup
+    BOM_Data -."Defines FULFILLMENT_MODE (Static Lookup)".-> Stock_Data
+
+    %% Production Status Views
+    Production_Order -."Feeds (Active)".-> Production_Status_Portal_VIEW
+    Production_Order -."Feeds (Closed)".-> Closed_Order_Ghost_VIEW
+    
+    %% ========================================
+    %% STYLES
+    %% ========================================
+    classDef external fill:#fff4f3,stroke:#ff797b,stroke-width:3px,stroke-dasharray:5,font-size:14px,padding:15px
+    
+    class M1_Planning module_m1
+    class M2_Balancing module_m2
+    class M3_Procurement module_m3
+    class The_Status_Hub module_hub
+    class External_Feedback module_ext
+    
+    classDef module_m1 fill:#f9fbff,stroke:#9333ea,stroke-width:2px,stroke-dasharray:2
+    classDef module_m2 fill:#ecfdf5,stroke:#059669,stroke-width:2px,stroke-dasharray:2
+    classDef module_m3 fill:#fffbeb,stroke:#d97706,stroke-width:2px,stroke-dasharray:2
+    classDef module_hub fill:#f8fafc,stroke:#475569,stroke-width:2px,stroke-dasharray:2
+    classDef module_ext fill:#fff1f2,stroke:#e11d48,stroke-width:2px,stroke-dasharray:2

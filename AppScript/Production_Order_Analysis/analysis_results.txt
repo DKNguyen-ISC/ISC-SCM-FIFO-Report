@@ -1,0 +1,530 @@
+Production Order Duplicate Analysis
+Generated at: 2026-03-11 15:32:56
+
+
+========================================================================
+  SECTION 1 — Material_Demand_SNAPSHOT Audit (Focus: PO 7576)
+========================================================================
+
+------------------------------------------------------------
+  Q1.1 — All SNAPSHOT rows for PRODUCTION_ORDER_ID = 7576
+------------------------------------------------------------
+SQL:
+
+    SELECT
+      DEMAND_ID, PRODUCTION_ORDER_ID, BOM_UPDATE,
+      FULFILLMENT_MODE, VPO,
+      ROUND(GROSS_DEMAND_QTY, 6) AS GROSS_DEMAND_QTY,
+      HAS_ISSUANCE_DATA, CALC_METHOD_USED
+    FROM `boxwood-charmer-473204-k8.isc_scm_ops`.Material_Demand_SNAPSHOT
+    WHERE PRODUCTION_ORDER_ID = 7576
+    ORDER BY DEMAND_ID, BOM_UPDATE
+    
+
+ERROR: No matching signature for operator = for argument types: STRING, INT64
+  Signature: T1 = T1
+    Unable to find common supertype for templated argument <T1>
+      Input types for <T1>: {INT64, STRING} at [8:11]; reason: invalidQuery, location: query, message: No matching signature for operator = for argument types: STRING, INT64
+  Signature: T1 = T1
+    Unable to find common supertype for templated argument <T1>
+      Input types for <T1>: {INT64, STRING} at [8:11]
+
+Location: US
+Job ID: 87d4fdc7-0bde-4155-9bd8-ba49572bbf3d
+
+
+------------------------------------------------------------
+  Q1.2 — Count duplicates: how many DEMAND_IDs appear more than once in SNAPSHOT
+------------------------------------------------------------
+SQL:
+
+    SELECT DEMAND_ID, COUNT(*) AS occurrences, ANY_VALUE(BOM_UPDATE) AS BOM_UPDATE
+    FROM `boxwood-charmer-473204-k8.isc_scm_ops`.Material_Demand_SNAPSHOT
+    WHERE PRODUCTION_ORDER_ID = 7576
+    GROUP BY DEMAND_ID
+    HAVING COUNT(*) > 1
+    
+
+ERROR: No matching signature for operator = for argument types: STRING, INT64
+  Signature: T1 = T1
+    Unable to find common supertype for templated argument <T1>
+      Input types for <T1>: {INT64, STRING} at [4:11]; reason: invalidQuery, location: query, message: No matching signature for operator = for argument types: STRING, INT64
+  Signature: T1 = T1
+    Unable to find common supertype for templated argument <T1>
+      Input types for <T1>: {INT64, STRING} at [4:11]
+
+Location: US
+Job ID: 9da60076-6bf7-445d-a098-bfc3cd82ee9b
+
+
+------------------------------------------------------------
+  Q1.3 — Full duplicate check across entire SNAPSHOT (all POs)
+------------------------------------------------------------
+SQL:
+
+    SELECT
+      COUNT(*) AS total_snapshot_rows,
+      COUNT(DISTINCT DEMAND_ID) AS distinct_demand_ids,
+      COUNT(*) - COUNT(DISTINCT DEMAND_ID) AS duplicate_rows
+    FROM `boxwood-charmer-473204-k8.isc_scm_ops`.Material_Demand_SNAPSHOT
+    
+
+→ 1 rows returned
+total_snapshot_rows            | distinct_demand_ids  | duplicate_rows      
+----------------------------------------------------------------------------
+11066                          | 10936                | 130                 
+
+========================================================================
+  SECTION 2 — Production_Order Table Audit (Hypothesis B: SCD2 Ghost)
+========================================================================
+
+------------------------------------------------------------
+  Q2.1 — ALL rows in Production_Order where PRODUCTION_ORDER_ID = 7576 (ignore VALID_TO_TS)
+------------------------------------------------------------
+SQL:
+
+    SELECT
+      PRODUCTION_ORDER_ID, VPO, SKU_CODE, DATA_STATE,
+      VALID_FROM_TS, VALID_TO_TS,
+      UPDATED_AT, UPDATED_BY
+    FROM `boxwood-charmer-473204-k8.isc_scm_ops`.Production_Order
+    WHERE PRODUCTION_ORDER_ID = 7576
+    ORDER BY VALID_FROM_TS
+    
+
+ERROR: No matching signature for operator = for argument types: STRING, INT64
+  Signature: T1 = T1
+    Unable to find common supertype for templated argument <T1>
+      Input types for <T1>: {INT64, STRING} at [7:11]; reason: invalidQuery, location: query, message: No matching signature for operator = for argument types: STRING, INT64
+  Signature: T1 = T1
+    Unable to find common supertype for templated argument <T1>
+      Input types for <T1>: {INT64, STRING} at [7:11]
+
+Location: US
+Job ID: 055c6761-92c9-401e-9177-32201dd21b9a
+
+
+------------------------------------------------------------
+  Q2.2 — Active rows only (VALID_TO_TS IS NULL) for PO 7576
+------------------------------------------------------------
+SQL:
+
+    SELECT
+      PRODUCTION_ORDER_ID, VPO, SKU_CODE, DATA_STATE,
+      VALID_FROM_TS, VALID_TO_TS, UPDATED_AT
+    FROM `boxwood-charmer-473204-k8.isc_scm_ops`.Production_Order
+    WHERE PRODUCTION_ORDER_ID = 7576
+      AND VALID_TO_TS IS NULL
+    
+
+ERROR: No matching signature for operator = for argument types: STRING, INT64
+  Signature: T1 = T1
+    Unable to find common supertype for templated argument <T1>
+      Input types for <T1>: {INT64, STRING} at [6:11]; reason: invalidQuery, location: query, message: No matching signature for operator = for argument types: STRING, INT64
+  Signature: T1 = T1
+    Unable to find common supertype for templated argument <T1>
+      Input types for <T1>: {INT64, STRING} at [6:11]
+
+Location: US
+Job ID: b070ece7-b0b8-4a42-8f0c-45238669ed3d
+
+
+------------------------------------------------------------
+  Q2.3 — How many active rows exist per PRODUCTION_ORDER_ID in Production_Order (find multi-row POs)
+------------------------------------------------------------
+SQL:
+
+    SELECT PRODUCTION_ORDER_ID, VPO, COUNT(*) AS active_rows
+    FROM `boxwood-charmer-473204-k8.isc_scm_ops`.Production_Order
+    WHERE VALID_TO_TS IS NULL
+    GROUP BY PRODUCTION_ORDER_ID, VPO
+    HAVING COUNT(*) > 1
+    ORDER BY active_rows DESC
+    LIMIT 20
+    
+
+→ 0 rows returned
+→ [No data to display]
+
+========================================================================
+  SECTION 3 — BOM_Order_List_Final Audit (Hypothesis A: List Duplication)
+========================================================================
+
+------------------------------------------------------------
+  Q3.1 — All ACTIVE BOM_Order_List_Final rows for PRODUCTION_ORDER_ID = 7576
+------------------------------------------------------------
+SQL:
+
+    SELECT
+      BOM_ORDER_LIST_FINAL_ID, PRODUCTION_ORDER_ID, BOM_UPDATE,
+      FULFILLMENT_MODE, ORDER_LIST_NOTE, BOM_CONSUMPTION, BOM_TOLERANCE,
+      VALID_FROM_TS, VALID_TO_TS, UPDATED_AT
+    FROM `boxwood-charmer-473204-k8.isc_scm_ops`.BOM_Order_List_Final
+    WHERE PRODUCTION_ORDER_ID = 7576
+      AND VALID_TO_TS IS NULL
+    ORDER BY BOM_UPDATE
+    
+
+ERROR: No matching signature for operator = for argument types: STRING, INT64
+  Signature: T1 = T1
+    Unable to find common supertype for templated argument <T1>
+      Input types for <T1>: {INT64, STRING} at [7:11]; reason: invalidQuery, location: query, message: No matching signature for operator = for argument types: STRING, INT64
+  Signature: T1 = T1
+    Unable to find common supertype for templated argument <T1>
+      Input types for <T1>: {INT64, STRING} at [7:11]
+
+Location: US
+Job ID: 8a02c556-9e3f-4899-9122-7103fd1db222
+
+
+------------------------------------------------------------
+  Q3.2 — Check if DEMAND_ID 'DEM_29da3c32b920cf6e511d5be04c6a0c16' is in BOM_Order_List_Final
+------------------------------------------------------------
+SQL:
+
+    SELECT
+      BOM_ORDER_LIST_FINAL_ID, PRODUCTION_ORDER_ID, BOM_UPDATE,
+      VALID_FROM_TS, VALID_TO_TS
+    FROM `boxwood-charmer-473204-k8.isc_scm_ops`.BOM_Order_List_Final
+    WHERE BOM_ORDER_LIST_FINAL_ID = 'DEM_29da3c32b920cf6e511d5be04c6a0c16'
+    
+
+→ 2 rows returned
+BOM_ORDER_LIST_FINAL_ID        | PRODUCTION_ORDER_ID  | BOM_UPDATE           | VALID_FROM_TS        | VALID_TO_TS         
+--------------------------------------------------------------------------------------------------------------------------
+DEM_29da3c32b920cf6e511d5be04c | 7576                 | 302067330            | 2026-02-28 02:38:07. | None                
+DEM_29da3c32b920cf6e511d5be04c | 7576                 | 302067330            | 2026-02-28 02:38:07. | None                
+
+------------------------------------------------------------
+  Q3.3 — Broader: any (PRODUCTION_ORDER_ID, BOM_UPDATE) with 2+ active rows in BOM_Order_List_Final
+------------------------------------------------------------
+SQL:
+
+    SELECT PRODUCTION_ORDER_ID, BOM_UPDATE, COUNT(*) AS active_entries
+    FROM `boxwood-charmer-473204-k8.isc_scm_ops`.BOM_Order_List_Final
+    WHERE VALID_TO_TS IS NULL
+    GROUP BY PRODUCTION_ORDER_ID, BOM_UPDATE
+    HAVING COUNT(*) > 1
+    ORDER BY active_entries DESC
+    LIMIT 30
+    
+
+→ 30 rows returned
+PRODUCTION_ORDER_ID            | BOM_UPDATE           | active_entries      
+----------------------------------------------------------------------------
+7925                           | 300029521            | 5                   
+7931                           | 300029521            | 5                   
+7923                           | 300029521            | 5                   
+7935                           | 300029521            | 5                   
+7933                           | 300029521            | 5                   
+7923                           | 300029532            | 4                   
+7925                           | 300029532            | 4                   
+7933                           | 300029532            | 4                   
+7931                           | 300029532            | 4                   
+7935                           | 300029532            | 4                   
+7577                           | 31204203801          | 2                   
+7577                           | 302067329            | 2                   
+7577                           | 31323731902          | 2                   
+7576                           | 330092198            | 2                   
+7577                           | 302067363            | 2                   
+7577                           | 302067409            | 2                   
+7576                           | 31204203801          | 2                   
+7576                           | 330000061            | 2                   
+7577                           | 302067465            | 2                   
+7577                           | 330000061            | 2                   
+7576                           | 330091402            | 2                   
+7577                           | 302067261            | 2                   
+7577                           | 308013378            | 2                   
+7576                           | 330092030            | 2                   
+7576                           | 308013378            | 2                   
+7577                           | 330091402            | 2                   
+7576                           | 330092018            | 2                   
+7577                           | 330092314            | 2                   
+7576                           | 330092314            | 2                   
+7576                           | 31323731902          | 2                   
+
+------------------------------------------------------------
+  Q3.4 — ALL rows (including expired) for PRODUCTION_ORDER_ID=7576 BOM=302067330
+------------------------------------------------------------
+SQL:
+
+    SELECT
+      BOM_ORDER_LIST_FINAL_ID, PRODUCTION_ORDER_ID, BOM_UPDATE,
+      VALID_FROM_TS, VALID_TO_TS, UPDATED_AT, UPDATED_BY
+    FROM `boxwood-charmer-473204-k8.isc_scm_ops`.BOM_Order_List_Final
+    WHERE PRODUCTION_ORDER_ID = 7576
+      AND BOM_UPDATE = '302067330'
+    ORDER BY VALID_FROM_TS
+    
+
+ERROR: No matching signature for operator = for argument types: STRING, INT64
+  Signature: T1 = T1
+    Unable to find common supertype for templated argument <T1>
+      Input types for <T1>: {INT64, STRING} at [6:11]; reason: invalidQuery, location: query, message: No matching signature for operator = for argument types: STRING, INT64
+  Signature: T1 = T1
+    Unable to find common supertype for templated argument <T1>
+      Input types for <T1>: {INT64, STRING} at [6:11]
+
+Location: US
+Job ID: 2bfb3beb-c18b-4664-acea-96601a78f2c0
+
+
+========================================================================
+  SECTION 4 — BOM_Data Audit (Hypothesis C: BOM Master Duplication)
+========================================================================
+
+------------------------------------------------------------
+  Q4.1 — BOM_Data entries for the 4 focus BOMs
+------------------------------------------------------------
+SQL:
+
+    SELECT BOM_UPDATE, BOM, BOM_STATUS, MAIN_GROUP, SUB_GROUP, PIC, UPDATED_AT
+    FROM `boxwood-charmer-473204-k8.isc_scm_ops`.BOM_Data
+    WHERE BOM_UPDATE IN ('302067330', '302067501', '302067374', '302067396')
+    ORDER BY BOM_UPDATE
+    
+
+→ 4 rows returned
+BOM_UPDATE                     | BOM                  | BOM_STATUS           | MAIN_GROUP           | SUB_GROUP            | PIC                  | UPDATED_AT          
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+302067330                      | 302067330            | ACTIVE               | Chì                  | Chì                  | Ngàn                 | 2026-01-29 08:41:44.
+302067374                      | 302067374            | ACTIVE               | Chì                  | Chì                  | Ngàn                 | 2026-01-29 08:41:44.
+302067396                      | 302067396            | ACTIVE               | Chì                  | Chì                  | Ngàn                 | 2026-01-29 08:41:44.
+302067501                      | 302067501            | ACTIVE               | Chì                  | Chì                  | Ngàn                 | 2026-01-29 08:41:44.
+
+------------------------------------------------------------
+  Q4.2 — Any BOM_UPDATE with 2+ rows in BOM_Data (should be 0 — SCD1 table)
+------------------------------------------------------------
+SQL:
+
+    SELECT BOM_UPDATE, COUNT(*) AS row_count
+    FROM `boxwood-charmer-473204-k8.isc_scm_ops`.BOM_Data
+    GROUP BY BOM_UPDATE
+    HAVING COUNT(*) > 1
+    ORDER BY row_count DESC
+    LIMIT 10
+    
+
+→ 0 rows returned
+→ [No data to display]
+
+========================================================================
+  SECTION 5 — Material_Demand_VIEW Live Check (Are duplicates still present in VIEW?)
+========================================================================
+
+------------------------------------------------------------
+  Q5.1 — Current VIEW rows for PO 7576 (live, no snapshot)
+------------------------------------------------------------
+SQL:
+
+    SELECT
+      DEMAND_ID, PRODUCTION_ORDER_ID, BOM_UPDATE,
+      VPO, FULFILLMENT_MODE,
+      ROUND(GROSS_DEMAND_QTY, 6) AS GROSS_DEMAND_QTY,
+      CALC_METHOD_USED, HAS_ISSUANCE_DATA
+    FROM `boxwood-charmer-473204-k8.isc_scm_ops`.Material_Demand_VIEW
+    WHERE PRODUCTION_ORDER_ID = 7576
+    ORDER BY DEMAND_ID, BOM_UPDATE
+    
+
+ERROR: No matching signature for operator = for argument types: STRING, INT64
+  Signature: T1 = T1
+    Unable to find common supertype for templated argument <T1>
+      Input types for <T1>: {INT64, STRING} at [8:11]; reason: invalidQuery, location: query, message: No matching signature for operator = for argument types: STRING, INT64
+  Signature: T1 = T1
+    Unable to find common supertype for templated argument <T1>
+      Input types for <T1>: {INT64, STRING} at [8:11]
+
+Location: US
+Job ID: 675f3489-cd5a-4e59-8028-14aed948ce4f
+
+
+------------------------------------------------------------
+  Q5.2 — Does VIEW have any DEMAND_ID that appears more than once (global scan)
+------------------------------------------------------------
+SQL:
+
+    SELECT DEMAND_ID, COUNT(*) AS occurrences, ANY_VALUE(PRODUCTION_ORDER_ID) AS PRODUCTION_ORDER_ID
+    FROM `boxwood-charmer-473204-k8.isc_scm_ops`.Material_Demand_VIEW
+    GROUP BY DEMAND_ID
+    HAVING COUNT(*) > 1
+    ORDER BY occurrences DESC
+    LIMIT 20
+    
+
+→ 20 rows returned
+DEMAND_ID                      | occurrences          | PRODUCTION_ORDER_ID 
+----------------------------------------------------------------------------
+DEM_5d4e77025db48cdaa2bf1784e5 | 5                    | 7931                
+DEM_6d8948c52f070fcb6a0b0f66a6 | 5                    | 7933                
+DEM_210d59b0b0431547a63ef904b7 | 5                    | 7923                
+DEM_a1c7afee9b5db19fcb76380f7c | 5                    | 7925                
+DEM_89b63f67c9c6919cb2c22236e4 | 5                    | 7935                
+DEM_a3853daf06f525b11fb2f0e6e6 | 4                    | 7925                
+DEM_0cf1f0603315b95a8298561f34 | 4                    | 7933                
+DEM_563f713bfd0d0a61df333e377e | 4                    | 7931                
+DEM_504d962a3c7924b2dec3d5081f | 4                    | 7923                
+DEM_e570f90fabce8ea641f45f9ec4 | 4                    | 7935                
+DEM_0d2907edd9e3106b39689f3d01 | 2                    | 7577                
+DEM_3e625de7a2bf42ad5a4604a5a3 | 2                    | 7577                
+DEM_52c3c702150cfae93caeb8332a | 2                    | 7576                
+DEM_f45d17c51698e699810ccb515a | 2                    | 7577                
+DEM_7d720a487c75f750ebb185a8ef | 2                    | 7576                
+DEM_7e97fcb34b85436fd39586e4c3 | 2                    | 7576                
+DEM_031e23e82422867ab4b93cdec8 | 2                    | 7577                
+DEM_8d194b2d3d94e8fdcd532034bd | 2                    | 7576                
+DEM_8bbfbd24126b7d21bbd7f3bbee | 2                    | 7576                
+DEM_f37b1ccf64873fe7d950b5507e | 2                    | 7577                
+
+========================================================================
+  SECTION 6 — SNAPSHOT Staleness: Compare SNAPSHOT vs VIEW row counts
+========================================================================
+
+------------------------------------------------------------
+  Q6.1 — SNAPSHOT vs. VIEW size comparison
+------------------------------------------------------------
+SQL:
+
+    SELECT 'SNAPSHOT' AS source, COUNT(*) AS row_count FROM `boxwood-charmer-473204-k8.isc_scm_ops`.Material_Demand_SNAPSHOT
+    UNION ALL
+    SELECT 'VIEW' AS source, COUNT(*) AS row_count FROM `boxwood-charmer-473204-k8.isc_scm_ops`.Material_Demand_VIEW
+    
+
+→ 2 rows returned
+source                         | row_count           
+-----------------------------------------------------
+SNAPSHOT                       | 11066               
+VIEW                           | 11066               
+
+------------------------------------------------------------
+  Q6.2 — SNAPSHOT metadata: when was it last written?
+------------------------------------------------------------
+SQL:
+
+    SELECT
+      MIN(CALCULATED_AT) AS earliest_calculated_at,
+      MAX(CALCULATED_AT) AS latest_calculated_at,
+      COUNT(*) AS total_rows
+    FROM `boxwood-charmer-473204-k8.isc_scm_ops`.Material_Demand_SNAPSHOT
+    
+
+→ 1 rows returned
+earliest_calculated_at         | latest_calculated_at | total_rows          
+----------------------------------------------------------------------------
+2026-03-11 07:43:01.832127+00: | 2026-03-11 07:43:01. | 11066               
+
+========================================================================
+  SECTION 7 — Historical Context: When were PO 7576/7577 last modified?
+========================================================================
+
+------------------------------------------------------------
+  Q7.1 — Production_Order history for VPO V2602003C01 (all rows, all timestamps)
+------------------------------------------------------------
+SQL:
+
+    SELECT
+      PRODUCTION_ORDER_ID, VPO, DATA_STATE,
+      VALID_FROM_TS, VALID_TO_TS, UPDATED_AT, UPDATED_BY
+    FROM `boxwood-charmer-473204-k8.isc_scm_ops`.Production_Order
+    WHERE VPO = 'V2602003C01'
+    ORDER BY VALID_FROM_TS
+    
+
+→ 1 rows returned
+PRODUCTION_ORDER_ID            | VPO                  | DATA_STATE           | VALID_FROM_TS        | VALID_TO_TS          | UPDATED_AT           | UPDATED_BY          
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+7576                           | V2602003C01          | PARTIALLY_RELEASED   | 2026-02-28 02:36:11. | None                 | 2026-03-10 17:49:46. | AUTO_SYNC           
+
+------------------------------------------------------------
+  Q7.2 — All distinct PRODUCTION_ORDER_IDs associated with VPO V2602003C01
+------------------------------------------------------------
+SQL:
+
+    SELECT DISTINCT PRODUCTION_ORDER_ID, DATA_STATE, VALID_FROM_TS, VALID_TO_TS
+    FROM `boxwood-charmer-473204-k8.isc_scm_ops`.Production_Order
+    WHERE VPO = 'V2602003C01'
+    ORDER BY PRODUCTION_ORDER_ID
+    
+
+→ 1 rows returned
+PRODUCTION_ORDER_ID            | DATA_STATE           | VALID_FROM_TS        | VALID_TO_TS         
+---------------------------------------------------------------------------------------------------
+7576                           | PARTIALLY_RELEASED   | 2026-02-28 02:36:11. | None                
+
+========================================================================
+  SECTION 8 — Timing Analysis: SNAPSHOT timestamp vs Production_Order update time
+========================================================================
+
+------------------------------------------------------------
+  Q8.1 — SNAPSHOT calculated_at vs Production_Order last update for PO 7576
+------------------------------------------------------------
+SQL:
+
+    SELECT
+      snap.CALCULATED_AT AS snapshot_time,
+      po.UPDATED_AT AS po_last_update,
+      po.UPDATED_BY AS po_updated_by,
+      po.DATA_STATE AS po_current_state,
+      po.VALID_TO_TS AS po_valid_to,
+      CASE
+        WHEN snap.CALCULATED_AT > po.UPDATED_AT THEN 'SNAPSHOT IS NEWER THAN PO UPDATE — Ghost should be healed'
+        ELSE 'PO WAS UPDATED AFTER SNAPSHOT — snapshot caught old state'
+      END AS timing_verdict
+    FROM (
+      SELECT MAX(CALCULATED_AT) AS CALCULATED_AT
+      FROM `boxwood-charmer-473204-k8.isc_scm_ops`.Material_Demand_SNAPSHOT
+      WHERE PRODUCTION_ORDER_ID = 7576
+    ) snap
+    CROSS JOIN (
+      SELECT UPDATED_AT, UPDATED_BY, DATA_STATE, VALID_TO_TS
+      FROM `boxwood-charmer-473204-k8.isc_scm_ops`.Production_Order
+      WHERE PRODUCTION_ORDER_ID = 7576
+      ORDER BY UPDATED_AT DESC
+      LIMIT 1
+    ) po
+    
+
+ERROR: No matching signature for operator = for argument types: STRING, INT64
+  Signature: T1 = T1
+    Unable to find common supertype for templated argument <T1>
+      Input types for <T1>: {INT64, STRING} at [15:13]; reason: invalidQuery, location: query, message: No matching signature for operator = for argument types: STRING, INT64
+  Signature: T1 = T1
+    Unable to find common supertype for templated argument <T1>
+      Input types for <T1>: {INT64, STRING} at [15:13]
+
+Location: US
+Job ID: 3851250b-87ae-4906-93c3-a78441ae255f
+
+
+========================================================================
+  SECTION 9 — Summary Interpretation Guide
+========================================================================
+
+HOW TO READ THESE RESULTS:
+═══════════════════════════════════════════════════════════════════════════════
+
+Root Cause A — BOM_Order_List_Final Duplication:
+  → CHECK Q3.1 and Q3.3
+  → POSITIVE SIGNAL: Q3.3 returns rows with active_entries>1 for PO 7576
+  → MEANING: BOM_Order_List_Final has 2+ active rows for the same (PO, BOM) pair
+  → FIX: Find and expire the extra BOM_Order_List_Final row
+
+Root Cause B — Production_Order SCD2 Ghost:
+  → CHECK Q2.2 and Q2.3
+  → POSITIVE SIGNAL: Q2.2 returns 2+ rows for PO 7576 with VALID_TO_TS IS NULL
+  → MEANING: Production_Order table has 2 active rows for the same PRODUCTION_ORDER_ID
+  → FIX: Run SP_SPLIT_BATCH_GATE or manually expire the ghost row
+
+Root Cause C — BOM_Data Duplication:
+  → CHECK Q4.2
+  → POSITIVE SIGNAL: Q4.2 returns rows (any BOM with >1 entry)
+  → MEANING: BOM_Data has 2 entries for same BOM_UPDATE → doubles all demand for that BOM
+  → FIX: Delete/deactivate the duplicate BOM_Data row
+
+SNAPSHOT TIMING ISSUE:
+  → CHECK Q8.1
+  → If timing_verdict = 'PO WAS UPDATED AFTER SNAPSHOT':
+    The snapshot was taken BEFORE the SCD2 engine healed the ghost.
+    The VIEW is now clean, but the frozen snapshot is dirty.
+    FIX: Re-run M2 (force allocation) to regenerate the SNAPSHOT.
+═══════════════════════════════════════════════════════════════════════════════

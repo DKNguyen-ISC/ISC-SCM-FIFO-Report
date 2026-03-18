@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Báo cáo phân tích hệ thống Assign Sourcing cho nhóm vật tư PUBLIC - Chì">
+    <title>P2: VPO | ISC Report V4 | ISC Supply Chain</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Syne:wght@700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="Style.css">
+
+</head>
+<body>
+    <nav class="sidebar">
+        <div class="sidebar-header">
+            <div class="logo-circle"><i class="fa-solid fa-chart-pie"></i></div>
+            <div class="brand">
+                <h2>ISC Report</h2>
+                <p>Data & Analytics</p>
+            </div>
+        </div>
+        
+        <ul class="nav-links">
+            <li><a href="index.html" id="nav_index"><span class="icon-wrap"><i class="fa-solid fa-bolt"></i></span>0. Tóm tắt điều hành</a></li>
+            <li><a href="p1_tolerance.html" id="nav_p1"><span class="icon-wrap"><i class="fa-solid fa-scale-balanced"></i></span>1. P1: Tolerance</a></li>
+            <li><a href="p2_vpo_fragmentation.html" id="nav_p2" class="active"><span class="icon-wrap"><i class="fa-solid fa-cubes-stacked"></i></span>2. P2: VPO Fragmentation</a></li>
+            <li><a href="p3_warehouse.html" id="nav_p3"><span class="icon-wrap"><i class="fa-solid fa-warehouse"></i></span>3. P3: Issuance Laziness</a></li>
+            <li><a href="validation.html" id="nav_valid"><span class="icon-wrap"><i class="fa-solid fa-laptop-code"></i></span>4. Kiểm chứng Logic</a></li>
+            <li><a href="solutions.html" id="nav_sol"><span class="icon-wrap"><i class="fa-solid fa-lightbulb"></i></span>5. Đề xuất Thay đổi</a></li>
+            <li><a href="conclusion.html" id="nav_conc"><span class="icon-wrap"><i class="fa-solid fa-book-open"></i></span>6. Hướng dẫn đọc & Kết luận</a></li>
+        </ul>
+
+        <div class="sidebar-footer">
+            <p>Version V4 – 2026-03</p>
+        </div>
+    </nav>
+    <main class="content">
+        <header class="top-header" id="header">
+            <div class="header-content">
+                <div class="title-area">
+                    <span class="eyebrow">Báo cáo phân tích chuyên sâu · PUBLIC – Chì</span>
+                    <h1>Assign Sourcing <span class="text-gradient">Analysis Report</span></h1>
+                </div>
+                <div class="badges">
+                    <span class="badge badge-glass tooltip"
+                        data-tooltip="Ban lãnh đạo, phòng Kế hoạch SX, Kho, Mua hàng">
+                        <i class="fa-solid fa-users"></i> Ban quản lý &amp; Operations
+                    </span>
+                    <span class="badge badge-accent"><i class="fa-solid fa-code-commit"></i> V4 · 2026-03</span>
+                </div>
+            </div>
+        </header>
+        
+        <section id="p2-vpo-fragmentation" class="section-container animate-on-scroll">
+            <div class="section-header">
+                <h2><i class="fa-solid fa-cubes-stacked"></i> 2. Nguyên nhân P2 – Tính phân mảnh VPO</h2>
+                <div class="divider"></div>
+            </div>
+
+            <details class="tech-accordion mb-6" open>
+                <summary>2.1 · Hành vi hiện tại của Assign_Sourcing <i class="fa-solid fa-chevron-down"></i></summary>
+                <div class="accordion-content">
+                    <p class="mb-4">Hiện tại mỗi dòng trong session tương ứng với một cặp
+                        <code>(BOM_UPDATE, VPO)</code>. Ví dụ BOM <code>302023503</code> xuất hiện 2 lần:</p>
+                    <div class="table-container mb-4 wrapper-border">
+                        <table class="modern-table">
+                            <thead>
+                                <tr>
+                                    <th>DRAFT_PR_ID</th>
+                                    <th>BOM_UPDATE</th>
+                                    <th>VPO</th>
+                                    <th>NET_SHORTAGE</th>
+                                    <th>FINAL_ORDER_QTY</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr class="highlight-row-danger">
+                                    <td><span class="id-token">PRD_…_001</span></td>
+                                    <td><strong>302023503</strong></td>
+                                    <td><span class="vpo-tag">V2601015C01</span></td>
+                                    <td><span class="font-mono text-danger">14.3157</span></td>
+                                    <td><span class="status-pill danger">600</span></td>
+                                </tr>
+                                <tr class="highlight-row-danger">
+                                    <td><span class="id-token">PRD_…_002</span></td>
+                                    <td><strong>302023503</strong></td>
+                                    <td><span class="vpo-tag">V2512007C06</span></td>
+                                    <td><span class="font-mono text-danger">531.0976</span></td>
+                                    <td><span class="status-pill danger">600</span></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="alert alert-danger">
+                        <i class="fa-solid fa-triangle-exclamation"></i>
+                        <span>Tổng shortage BOM = 14.32 + 531.10 = <strong>545.42</strong>, nhưng hệ thống CEILING từng
+                            dòng → tổng đặt mua = <strong>600 + 600 = 1.200</strong> (gấp đôi cần thiết).</span>
+                    </div>
+                </div>
+            </details>
+
+            <h3 class="mb-4">2.2 · So sánh lãng phí SPQ (Ví dụ SPQ = 600)</h3>
+            <div class="grid-2 mb-8">
+                <div class="scenario-card negative">
+                    <div class="scenario-badge">Hiện tại – Từng VPO riêng lẻ</div>
+                    <div class="scenario-content">
+                        <div class="item-row">
+                            <span>VPO1 Shortage <span class="text-danger">(14.32)</span></span>
+                            <span class="math">CEILING(14.32, 600) = <strong class="text-danger">600</strong></span>
+                        </div>
+                        <div class="item-row">
+                            <span>VPO2 Shortage <span class="text-danger">(531.10)</span></span>
+                            <span class="math">CEILING(531.10, 600) = <strong class="text-danger">600</strong></span>
+                        </div>
+                        <div class="total-row">
+                            <span>Tổng Đặt Mua:</span>
+                            <span class="total-val text-danger">1.200</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="scenario-card positive">
+                    <div class="scenario-badge">Đề xuất – Gom gộp theo BOM</div>
+                    <div class="scenario-content">
+                        <div class="item-row">
+                            <span>Tổng Shortage BOM <span class="text-success">(545.42)</span></span>
+                            <span class="math">CEILING(545.42, 600) = <strong class="text-success">600</strong></span>
+                        </div>
+                        <div class="total-row">
+                            <span>Tổng Đặt Mua:</span>
+                            <span class="total-val text-success">600</span>
+                        </div>
+                        <div class="saving-chip"><i class="fa-solid fa-piggy-bank"></i> Giảm 50% · Tiết kiệm 600 đ.vị
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <details class="tech-accordion mb-6" open>
+                <summary>2.3 · Vì sao cần gom theo BOM cho hàng PUBLIC? <i class="fa-solid fa-chevron-down"></i>
+                </summary>
+                <div class="accordion-content">
+                    <p class="mb-4">Nhóm vật tư như Chì có tính chất <strong>PUBLIC</strong> — dùng chung cho nhiều VPO.
+                        Không cần bám quá chặt theo từng VPO; quan trọng là <strong>tổng nhu cầu cho BOM đó</strong>.
+                    </p>
+                    <div class="grid-2">
+                        <div>
+                            <h4 class="mb-2 text-danger">❌ Giữ từng VPO riêng lẻ:</h4>
+                            <ul style="list-style:none;font-size:0.92rem;">
+                                <li style="padding:0.3rem 0;"><i class="fa-solid fa-xmark text-danger"></i> Lãng phí
+                                    CEILING — đặt gấp đôi/gấp ba nếu nhiều VPO nhỏ.</li>
+                                <li style="padding:0.3rem 0;"><i class="fa-solid fa-xmark text-danger"></i> Tạo nhiều
+                                    dòng PR → tốn thời gian duyệt.</li>
+                                <li style="padding:0.3rem 0;"><i class="fa-solid fa-xmark text-danger"></i> Dễ bị nhiễu
+                                    bởi lỗi nhập liệu kho theo VPO (P3).</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h4 class="mb-2 text-success">✅ Gom theo BOM:</h4>
+                            <ul style="list-style:none;font-size:0.92rem;">
+                                <li style="padding:0.3rem 0;"><i class="fa-solid fa-check text-success"></i> Ít CEILING
+                                    lặp — tránh đặt dư không cần thiết.</li>
+                                <li style="padding:0.3rem 0;"><i class="fa-solid fa-check text-success"></i> Planner chỉ
+                                    xem <strong>1 dòng / 1 BOM</strong> → đơn giản hơn nhiều.</li>
+                                <li style="padding:0.3rem 0;"><i class="fa-solid fa-check text-success"></i> Vô hiệu hóa
+                                    phần lớn lỗi phân bổ VPO từ kho (P3).</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </details>
+
+            <h3 class="mb-4">2.4 · Cấu trúc session mới đề xuất cho PUBLIC</h3>
+            <p class="mb-4">Khi <code>FULFILLMENT_MODE = PUBLIC</code>, chuyển từ cấu trúc VPO-level sang BOM-level:</p>
+            <div class="grid-2 mb-6">
+                <div>
+                    <p class="mb-2" style="font-weight:600;color:var(--danger);font-size:0.9rem;"><i
+                            class="fa-solid fa-xmark"></i> Trước (VPO-level):</p>
+                    <div class="code-mac">
+                        <div class="mac-header">
+                            <span class="mac-btn red"></span><span class="mac-btn yellow"></span><span
+                                class="mac-btn green"></span>
+                            <span class="mac-title">DRAFT_PR – Hiện tại</span>
+                        </div>
+                        <pre><code>DRAFT_PR_ID  BOM       VPO          NET_SHORTAGE  ORDER_QTY
+-----------  --------  -----------  ------------  ---------
+PRD_…_001    <span class="code-key">302023503</span>  V2601015C01  14.32         <span class="code-highlight">600</span>
+PRD_…_002    <span class="code-key">302023503</span>  V2512007C06  531.10        <span class="code-highlight">600</span>
+<span class="code-comment">-- Tổng đặt: 1.200 ← lãng phí 600 đ.vị SPQ</span></code></pre>
+                    </div>
+                </div>
+                <div>
+                    <p class="mb-2" style="font-weight:600;color:var(--success);font-size:0.9rem;"><i
+                            class="fa-solid fa-check"></i> Sau (BOM-level, gom VPO):</p>
+                    <div class="code-mac">
+                        <div class="mac-header">
+                            <span class="mac-btn red"></span><span class="mac-btn yellow"></span><span
+                                class="mac-btn green"></span>
+                            <span class="mac-title">DRAFT_PR – Đề xuất</span>
+                        </div>
+                        <pre><code>DRAFT_PR_ID   BOM       VPOs (gộp)         TOTAL_SHORTAGE  ORDER_QTY
+------------  --------  -----------------  --------------  ---------
+<span class="code-highlight">AGG_302023503</span>  <span class="code-key">302023503</span>  V2601|V2512007     545.42          <span class="code-highlight">600</span>
+<span class="code-comment">-- Tổng đặt: 600 ← tiết kiệm 50%</span></code></pre>
+                    </div>
+                </div>
+            </div>
+            <div class="note-box mb-6">
+                <strong><i class="fa-solid fa-circle-info text-success"></i> Thay đổi chính trong schema:</strong>
+                <ul>
+                    <li><i class="fa-solid fa-arrow-right" style="color:var(--secondary);font-size:0.8rem;"></i> Cột VPO
+                        chứa <strong>danh sách VPO</strong> (ngăn cách bằng pipe <code>|</code>).</li>
+                    <li><i class="fa-solid fa-arrow-right" style="color:var(--secondary);font-size:0.8rem;"></i>
+                        <code>NET_SHORTAGE_QTY</code> là <strong>tổng shortage của tất cả VPO</strong> cho BOM đó.</li>
+                    <li><i class="fa-solid fa-arrow-right" style="color:var(--secondary);font-size:0.8rem;"></i>
+                        <code>REQUESTED_DELIVERY_DATE</code> = <strong>ngày sớm nhất</strong> trong tất cả các VPO liên
+                        quan.</li>
+                </ul>
+            </div>
+
+            <div class="table-container mb-6 wrapper-border">
+                <table class="modern-table">
+                    <thead>
+                        <tr>
+                            <th>DRAFT_PR_ID</th>
+                            <th>BOM_UPDATE</th>
+                            <th>VPOs (Gộp)</th>
+                            <th>TOTAL_SHORTAGE</th>
+                            <th>FINAL_ORDER_QTY</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="highlight-row">
+                            <td><span class="id-token">AGG_302023503</span></td>
+                            <td><strong>302023503</strong></td>
+                            <td>
+                                <div class="vpo-tags">
+                                    <span class="vpo-tag">V2601015C01</span>
+                                    <span class="vpo-tag">V2512007C06</span>
+                                </div>
+                            </td>
+                            <td><span class="font-mono">545.42</span></td>
+                            <td><span class="status-pill success">600</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <details class="tech-accordion mb-6" open>
+                <summary>2.5 · Ảnh hưởng lên Upload PR – 3 phương án xử lý <i class="fa-solid fa-chevron-down"></i>
+                </summary>
+                <div class="accordion-content">
+                    <p class="mb-4">Khi bấm <strong>"Upload quyết định Sourcing"</strong>, có ba cách xử lý multi-VPO
+                        trong PR_Staging:</p>
+                    <div class="pr-options">
+                        <div class="pr-option">
+                            <div class="pr-option-badge">A</div>
+                            <div>
+                                <strong>1 PR / 1 BOM — đơn giản nhất</strong>
+                                <p>PR_Staging lưu VPO = <code>NULL</code> hoặc <code>MULTI</code>. Các bước sau hiểu đây
+                                    là đơn hàng PUBLIC phục vụ nhiều VPO. Triển khai nhanh nhất, nhưng mất traceability
+                                    VPO chi tiết.</p>
+                            </div>
+                        </div>
+                        <div class="pr-option">
+                            <div class="pr-option-badge b">B</div>
+                            <div>
+                                <strong>Nổ lại theo VPO — giữ traceability</strong>
+                                <p>Khi upload, hệ thống tách lại số lượng order theo <strong>tỷ lệ shortage từng
+                                        VPO</strong>, tạo nhiều dòng trong PR_Staging. Giữ được chuỗi VPO → PO phục vụ
+                                    traceability đầy đủ. Phức tạp hơn nhưng sạch data nhất.</p>
+                            </div>
+                        </div>
+                        <div class="pr-option">
+                            <div class="pr-option-badge c">C</div>
+                            <div>
+                                <strong>Pipe-delimited VPO trong 1 trường</strong>
+                                <p>Lưu <code>PR_Staging.VPO = 'VPO1|VPO2|...'</code>. Engine hợp đồng/PO xử lý dạng
+                                    multi-VPO. Cân bằng giữa đơn giản hóa UI và khả năng truy vết. Phù hợp nếu
+                                    downstream engine đã hỗ trợ parse pipe-list.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="alert alert-info mt-4">
+                        <i class="fa-solid fa-scale-balanced"></i>
+                        <span>Với vật tư PUBLIC, <strong>gom BOM cấp cao (A hoặc C)</strong> giúp: giảm lãng phí SPQ,
+                            giảm tải planner, và vô hiệu hóa phần lớn lỗi nhập liệu kho (P3).</span>
+                    </div>
+                </div>
+            </details>
+        </section>
+        
+        <footer class="footer mt-12">
+            <p>Báo cáo Nội bộ ISC Supply Chain &nbsp;·&nbsp; Tháng 03–2026 &nbsp;·&nbsp; BRS V4 &nbsp;·&nbsp; <em>PUBLIC
+                    – Chì</em></p>
+        </footer>
+    </main>
+    
+    <script>
+        document.querySelectorAll('.animate-on-scroll').forEach(el => {
+            el.classList.add('is-visible'); // Trigger directly since chunked pages 
+        });
+    </script>
+    
+</body>
+</html>

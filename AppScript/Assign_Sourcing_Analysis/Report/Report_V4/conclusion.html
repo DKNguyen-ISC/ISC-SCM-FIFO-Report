@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Báo cáo phân tích hệ thống Assign Sourcing cho nhóm vật tư PUBLIC - Chì">
+    <title>Kết luận | ISC Report V4 | ISC Supply Chain</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Syne:wght@700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="Style.css">
+
+</head>
+<body>
+    <nav class="sidebar">
+        <div class="sidebar-header">
+            <div class="logo-circle"><i class="fa-solid fa-chart-pie"></i></div>
+            <div class="brand">
+                <h2>ISC Report</h2>
+                <p>Data & Analytics</p>
+            </div>
+        </div>
+        
+        <ul class="nav-links">
+            <li><a href="index.html" id="nav_index"><span class="icon-wrap"><i class="fa-solid fa-bolt"></i></span>0. Tóm tắt điều hành</a></li>
+            <li><a href="p1_tolerance.html" id="nav_p1"><span class="icon-wrap"><i class="fa-solid fa-scale-balanced"></i></span>1. P1: Tolerance</a></li>
+            <li><a href="p2_vpo_fragmentation.html" id="nav_p2"><span class="icon-wrap"><i class="fa-solid fa-cubes-stacked"></i></span>2. P2: VPO Fragmentation</a></li>
+            <li><a href="p3_warehouse.html" id="nav_p3"><span class="icon-wrap"><i class="fa-solid fa-warehouse"></i></span>3. P3: Issuance Laziness</a></li>
+            <li><a href="validation.html" id="nav_valid"><span class="icon-wrap"><i class="fa-solid fa-laptop-code"></i></span>4. Kiểm chứng Logic</a></li>
+            <li><a href="solutions.html" id="nav_sol"><span class="icon-wrap"><i class="fa-solid fa-lightbulb"></i></span>5. Đề xuất Thay đổi</a></li>
+            <li><a href="conclusion.html" id="nav_conc" class="active"><span class="icon-wrap"><i class="fa-solid fa-book-open"></i></span>6. Hướng dẫn đọc & Kết luận</a></li>
+        </ul>
+
+        <div class="sidebar-footer">
+            <p>Version V4 – 2026-03</p>
+        </div>
+    </nav>
+    <main class="content">
+        <header class="top-header" id="header">
+            <div class="header-content">
+                <div class="title-area">
+                    <span class="eyebrow">Báo cáo phân tích chuyên sâu · PUBLIC – Chì</span>
+                    <h1>Assign Sourcing <span class="text-gradient">Analysis Report</span></h1>
+                </div>
+                <div class="badges">
+                    <span class="badge badge-glass tooltip"
+                        data-tooltip="Ban lãnh đạo, phòng Kế hoạch SX, Kho, Mua hàng">
+                        <i class="fa-solid fa-users"></i> Ban quản lý &amp; Operations
+                    </span>
+                    <span class="badge badge-accent"><i class="fa-solid fa-code-commit"></i> V4 · 2026-03</span>
+                </div>
+            </div>
+        </header>
+        
+        <div class="grid-2 gap-8">
+<section id="guide" class="section-container animate-on-scroll mb-0">
+                <div class="section-header">
+                    <h2><i class="fa-solid fa-book-open"></i> 6. Hướng dẫn đọc</h2>
+                    <div class="divider"></div>
+                </div>
+                <div class="timeline-guide">
+                    <div class="guide-item">
+                        <div class="guide-time">5 phút</div>
+                        <div class="guide-text">
+                            <strong>Ban Lãnh Đạo Review</strong>
+                            <p>Đọc phần <strong>0. Tóm tắt điều hành</strong> — 3 nguyên nhân &amp; 3 nhóm giải pháp.
+                            </p>
+                        </div>
+                    </div>
+                    <div class="guide-item">
+                        <div class="guide-time">15–20 phút</div>
+                        <div class="guide-text">
+                            <strong>Planner / Quản lý vận hành</strong>
+                            <p>Đọc thêm <strong>Mục 1, 2, 3</strong> để hiểu nguyên nhân và các ví dụ số liệu cụ thể.
+                            </p>
+                        </div>
+                    </div>
+                    <div class="guide-item action">
+                        <div class="guide-time"><i class="fa-solid fa-code"></i></div>
+                        <div class="guide-text">
+                            <strong>Tech Team / Data Engineer</strong>
+                            <p>Map <strong>Part 1–2–3</strong> làm Specs. Dùng 20 câu SQL làm checklist triển khai &amp;
+                                kiểm thử.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+<section id="conclusion" class="section-container animate-on-scroll mb-0">
+                <div class="section-header">
+                    <h2><i class="fa-solid fa-flag-checkered"></i> 7. Kết luận chung</h2>
+                    <div class="divider"></div>
+                </div>
+                <ul class="feature-list mb-6">
+                    <li>
+                        <div class="icon-circle"><i class="fa-solid fa-1"></i></div>
+                        <p>Hệ thống hiện tại <strong>đúng theo Data Spec CS/HQ</strong> nhưng <strong>chưa khớp tư duy
+                                vận hành</strong> của planner (Lead Plan).</p>
+                    </li>
+                    <li>
+                        <div class="icon-circle"><i class="fa-solid fa-2"></i></div>
+                        <p>Có thể <strong>đưa hai thế giới lại gần nhau</strong> bằng 3 thay đổi kỹ thuật rõ ràng:
+                            Tolerance mode (P1), BOM Aggregation (P2), BOM-level Shortage (P3).</p>
+                    </li>
+                    <li>
+                        <div class="icon-circle"><i class="fa-solid fa-3"></i></div>
+                        <p>Sau 3 thay đổi, file Excel Lead Plan của Ngàn có thể <strong>giảm vai trò xuống chỉ còn
+                                backup</strong>, hoặc dần loại bỏ hoàn toàn.</p>
+                    </li>
+                </ul>
+                <blockquote class="modern-quote">
+                    <strong>Tuyên ngôn số:</strong> Hệ thống mua hàng không cần "thắng" Excel về toán học, mà cần
+                    <strong>bắt chước cách planner đang suy nghĩ và ra quyết định</strong> — nhưng làm nó <em>nhanh hơn,
+                        ít thao tác hơn, và kiểm soát tốt hơn</em>.
+                </blockquote>
+            </section>
+</div>
+        
+        <footer class="footer mt-12">
+            <p>Báo cáo Nội bộ ISC Supply Chain &nbsp;·&nbsp; Tháng 03–2026 &nbsp;·&nbsp; BRS V4 &nbsp;·&nbsp; <em>PUBLIC
+                    – Chì</em></p>
+        </footer>
+    </main>
+    
+    <script>
+        document.querySelectorAll('.animate-on-scroll').forEach(el => {
+            el.classList.add('is-visible'); // Trigger directly since chunked pages 
+        });
+    </script>
+    
+</body>
+</html>

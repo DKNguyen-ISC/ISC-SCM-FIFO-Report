@@ -1,0 +1,192 @@
+﻿python : C:\Users\xao
+sp\AppData\Local\Prog
+rams\Python\Python313
+\Lib\site-packages\go
+ogle\auth\_default.py
+:76: UserWarning: 
+Your application has 
+authenticated using 
+end user credentials 
+from Google Cloud 
+SDK without a quota 
+project. You might 
+receive a "quota 
+exceeded" or "API 
+not enabled" error. 
+See the following 
+page for 
+troubleshooting: http
+s://cloud.google.com/
+docs/authentication/a
+dc-troubleshooting/us
+er-creds. 
+At line:1 char:1
++ python 
+analyze_issuance.py 
+2>&1 | Out-File 
+-FilePath 
+analysis_out.txt ...
++ ~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~
+    + CategoryInfo   
+           : NotSpe  
+  cified: (C:\User   
+ s\xaosp\...ng/us    
+er-creds. :Strin    
+g) [], RemoteExc    
+eption
+    + FullyQualified 
+   ErrorId : Native  
+  CommandError
+ 
+  warnings.warn(_CLOU
+D_SDK_CREDENTIALS_WAR
+NING)
+Traceback (most 
+recent call last):
+  File "G:\My 
+Drive\Tech Jobs\ISC\P
+resentation\Report 
+2\Task 1 Supply 
+Chain 
+Database\Diagrams\SC 
+Database Diagrams\Dia
+grams\Diagrams 
+Version 127-Shortage 
+Calculation Refinemen
+t\AppScript\analyze_i
+ssuance.py", line 
+82, in <module>
+    rows = 
+run_query(f"""
+    SELECT
+    ...<10 lines>...
+    ORDER BY 
+CALC_METHOD_USED, 
+HAS_ISSUANCE_DATA
+    """)
+  File "G:\My 
+Drive\Tech Jobs\ISC\P
+resentation\Report 
+2\Task 1 Supply 
+Chain 
+Database\Diagrams\SC 
+Database Diagrams\Dia
+grams\Diagrams 
+Version 127-Shortage 
+Calculation Refinemen
+t\AppScript\analyze_i
+ssuance.py", line 
+17, in run_query
+    rows = 
+list(job.result())
+                
+~~~~~~~~~~^^
+  File "C:\Users\xaos
+p\AppData\Local\Progr
+ams\Python\Python313\
+Lib\site-packages\goo
+gle\cloud\bigquery\jo
+b\query.py", line 
+1773, in result
+    while not 
+is_job_done():
+              
+~~~~~~~~~~~^^
+  File "C:\Users\xaos
+p\AppData\Local\Progr
+ams\Python\Python313\
+Lib\site-packages\goo
+gle\api_core\retry\re
+try_unary.py", line 
+294, in 
+retry_wrapped_func
+    return 
+retry_target(
+        target,
+    ...<3 lines>...
+        
+on_error=on_error,
+    )
+  File "C:\Users\xaos
+p\AppData\Local\Progr
+ams\Python\Python313\
+Lib\site-packages\goo
+gle\api_core\retry\re
+try_unary.py", line 
+156, in retry_target
+    next_sleep = 
+_retry_error_helper(
+        exc,
+    ...<6 lines>...
+        timeout,
+    )
+  File "C:\Users\xaos
+p\AppData\Local\Progr
+ams\Python\Python313\
+Lib\site-packages\goo
+gle\api_core\retry\re
+try_base.py", line 
+216, in 
+_retry_error_helper
+    raise final_exc 
+from source_exc
+  File "C:\Users\xaos
+p\AppData\Local\Progr
+ams\Python\Python313\
+Lib\site-packages\goo
+gle\api_core\retry\re
+try_unary.py", line 
+147, in retry_target
+    result = target()
+  File "C:\Users\xaos
+p\AppData\Local\Progr
+ams\Python\Python313\
+Lib\site-packages\goo
+gle\cloud\bigquery\jo
+b\query.py", line 
+1722, in is_job_done
+    raise 
+job_failed_exception
+google.api_core.excep
+tions.BadRequest: 
+400 Unrecognized 
+name: 
+SHORTAGE_ISSUANCE at 
+[7:17]; reason: 
+invalidQuery, 
+location: query, 
+message: 
+Unrecognized name: 
+SHORTAGE_ISSUANCE at 
+[7:17]
+
+Location: US
+Job ID: 94f93b3d-8ca7
+-47da-ac51-a9f11583b0
+86
+
+
+======================================================================
+QUERY: 1. Material_Issuance Current State
+======================================================================
+SOURCE_ID	row_count	unique_boms	unique_vpos	total_qty	earliest_snapshot	latest_snapshot	last_synced
+CHI_LEAD	137	82	34	65774.6	2026-03-02	2026-03-10	2026-03-10 15:06:37+00
+
+======================================================================
+QUERY: 2. BOM_UPDATE range in Material_Issuance
+======================================================================
+min_bom	max_bom	unique_boms	total_rows
+302001725	302079590	82	137
+
+======================================================================
+QUERY: 3. BOM_Data ù Ch∞ BOMs by status
+======================================================================
+BOM_STATUS	unique_bom_updates
+ACTIVE	2840
+
+ERROR: BadRequest: 400 Unrecognized name: SHORTAGE_ISSUANCE at [7:17]; reason: invalidQuery, location: query, message: Unrecognized name: SHORTAGE_ISSUANCE at [7:17]
+
+Location: US
+Job ID: 94f93b3d-8ca7-47da-ac51-a9f11583b086
+

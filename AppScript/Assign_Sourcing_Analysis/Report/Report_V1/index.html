@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Assign Sourcing Analysis Report</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Load FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+    <header>
+        <div class="container">
+            <h1>Assign Sourcing Analysis Report V2</h1>
+            <p>ISC Supply Chain System Computations vs. Manual Lead Plan Workflows</p>
+        </div>
+    </header>
+
+    <main class="container">
+
+        <!-- Executive Summary Section -->
+        <section id="executive-summary">
+            <h2 class="section-title"><i class="fas fa-chart-pie"></i> Executive Summary</h2>
+            <p style="font-size: 1.125rem; color: #475569; margin-bottom: 2rem;">
+                An intensive audit of the ISC Supply Chain System (M3 / BigQuery) versus the manual "Lead Plan" workflows reveals that the discrepancies in Shortage/Demand calculations are <strong>structural, not random</strong>. The automated system strictly follows Master Data parameters and distinct VPO isolation, while the manual Lead Plan spreadsheet employs operational heuristics (buffers and aggregation) to save time and prevent stockouts.
+            </p>
+
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-icon" style="color: var(--danger-color);"><i class="fas fa-exclamation-triangle"></i></div>
+                    <div class="metric-value">20,907</div>
+                    <div class="metric-label">Unit Shortfall (System vs Manual)</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-icon" style="color: var(--warning-color);"><i class="fas fa-layer-group"></i></div>
+                    <div class="metric-value">3.0x</div>
+                    <div class="metric-label">VPO Fragmentation Factor</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-icon" style="color: var(--secondary-color);"><i class="fas fa-boxes"></i></div>
+                    <div class="metric-value">100%</div>
+                    <div class="metric-label">Warehouse Attribution Shift</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- P1: Tolerance Disconnect -->
+        <section id="problem-1">
+            <h2 class="section-title"><i class="fas fa-balance-scale"></i> 1. The Tolerance Disconnect (Demand)</h2>
+            <div class="problem-card">
+                <div class="problem-sidebar warning">
+                    <h3>At a Glance</h3>
+                    <span class="tag high-impact">High Impact (~4% Variance)</span>
+                    <span class="tag">Master Data Issue</span>
+                    <p style="margin-top: 1rem; font-size: 0.9rem;">
+                        The system inherently under-orders because HQ master data leverages tight 3-4% tolerances, while the manual process uses a fixed, safer 10% buffer.
+                    </p>
+                </div>
+                <div class="problem-content">
+                    <p><strong>The System Math:</strong> Calculates demand strictly based on Master Data <code>BOM_TOLERANCE</code> imported from HQ.</p>
+                    <p style="background: #f1f5f9; padding: 1rem; border-radius: 6px; font-family: monospace; margin: 1rem 0;">Demand = (Order Qty - Completed Qty) &times; BOM Consumption &times; (1 + CS_BOM_TOLERANCE)</p>
+                    <p><strong>The Lead Plan Math:</strong> Overrides master data to utilize a standard operational buffer.</p>
+                    <p style="background: #f1f5f9; padding: 1rem; border-radius: 6px; font-family: monospace; margin: 1rem 0;">Demand = (Order Qty - Completed Qty) &times; BOM Consumption &times; (1 + 10%)</p>
+                    
+                    <h4 style="margin-top: 1.5rem; color: var(--primary-color);">Case Study: BOM 302014740</h4>
+                    <table class="comparison-table">
+                        <tr>
+                            <th>Calculation Method</th>
+                            <th>Applied Tolerance</th>
+                            <th>Required Units</th>
+                            <th>Result</th>
+                        </tr>
+                        <tr>
+                            <td>System (M3)</td>
+                            <td>3.0% <em>(CS Data)</em></td>
+                            <td>5.49</td>
+                            <td style="color: var(--danger-color); font-weight: 600;">Under-orders</td>
+                        </tr>
+                        <tr class="highlight-row">
+                            <td>Lead Plan (Manual)</td>
+                            <td>10.0% <em>(Fixed)</em></td>
+                            <td>5.87</td>
+                            <td style="color: var(--accent-color); font-weight: 600;">Meets Operational Needs</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- P2: VPO Fragmentation -->
+        <section id="problem-2">
+            <h2 class="section-title"><i class="fas fa-network-wired"></i> 2. VPO Fragmentation vs. Aggregation</h2>
+            <div class="problem-card">
+                <div class="problem-sidebar info">
+                    <h3>At a Glance</h3>
+                    <span class="tag medium-impact">UX & Efficiency Impact</span>
+                    <span class="tag">System Design</span>
+                    <p style="margin-top: 1rem; font-size: 0.9rem;">
+                        The system splits PRs per individual VPO causing complex spreadsheets and rounding waste. The Lead Plan groups shortages organically.
+                    </p>
+                </div>
+                <div class="problem-content">
+                    <p>When the system calculates shortages per VPO, it rounds up to the nearest Standard Package Quantity (SPQ) per VPO. If a BOM is split across 8 VPOs, the system rounds up 8 times. The manual Lead Plan aggregates the total raw demand first, and <strong>then</strong> rounds up once.</p>
+                    
+                    <h4 style="margin-top: 1.5rem; color: var(--primary-color);">Case Study: BOM 302023503</h4>
+                    <table class="comparison-table">
+                        <tr>
+                            <th>View</th>
+                            <th>PR Lines Generated</th>
+                            <th>Shortage Breakdown</th>
+                            <th>Action Required</th>
+                        </tr>
+                        <tr>
+                            <td>System View</td>
+                            <td>2 lines</td>
+                            <td>V2601... = 14.31 u.<br>V2512... = 531.09 u.</td>
+                            <td>Review and order multiple lines, wasting MOQ ceilings.</td>
+                        </tr>
+                        <tr class="highlight-row">
+                            <td>Lead Plan View</td>
+                            <td>1 line</td>
+                            <td>Aggregated = ~545 u.</td>
+                            <td>Review 1 line. Order SPQ efficiently.</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- P3: Warehouse Issuance -->
+        <section id="problem-3">
+            <h2 class="section-title"><i class="fas fa-warehouse"></i> 3. Warehouse Issuance "Laziness"</h2>
+            <div class="problem-card">
+                <div class="problem-sidebar warning">
+                    <h3>At a Glance</h3>
+                    <span class="tag high-impact">Data Integrity Impact</span>
+                    <span class="tag">Process Error</span>
+                    <p style="margin-top: 1rem; font-size: 0.9rem;">
+                        Warehouse teams attribute bulk material issuances to a single scheduled VPO instead of splitting it, destroying VPO-level accuracy.
+                    </p>
+                </div>
+                <div class="problem-content">
+                    <p>When the warehouse delivers a bulk pallet of material (e.g., Lead Cores), they are supposed to distribute that issuance proportionally across the VPOs being produced. Instead, to save data entry time, warehouse staff frequently attribute the entire shipment to the <strong>first VPO</strong> on the documentation.</p>
+                    
+                    <h4 style="margin-top: 1.5rem; color: var(--primary-color);">Case Study: BOM 302038502</h4>
+                    <p style="margin-bottom: 1rem;">VPO <code>V2512034C03</code> required exactly <strong>3.57 units</strong> of lead.</p>
+                    <ul>
+                        <li style="margin-bottom: 0.5rem;"><strong>The Warehouse Entry:</strong> The warehouse booked a massive <strong>18.75 units</strong> against this single VPO, ignoring the other VPOs on the factory floor that actually consumed the rest.</li>
+                        <li><strong>The Lead Plan Workaround:</strong> The manual spreadsheet handles this logically by looking at the <em>Macro BOM level</em>: <code>(Total Issued - Total Consumed)</code>. The planner ignores the botched VPO-level distribution.</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- Strategic Recommendations -->
+        <section id="recommendations" style="border-left: 4px solid var(--accent-color);">
+            <h2 class="section-title"><i class="fas fa-lightbulb" style="color: var(--accent-color);"></i> Strategic Recommendations</h2>
+            <p style="margin-bottom: 1.5rem;">To sunset the manual Lead Plan spreadsheet and rely purely on the ISC System, we must update the software to replicate the operational intelligence of the planners:</p>
+            
+            <ul class="recommendations-list">
+                <li>
+                    <h4>Tolerance Override Toggle (UI Feature)</h4>
+                    <p>Update the <code>Assign_Sourcing</code> interface to allow planners to explicitly apply a <strong>"Global 10% Buffer"</strong> that overrides the HQ <code>BOM_TOLERANCE</code> master data dynamically during shortage calculations.</p>
+                </li>
+                <li>
+                    <h4>BOM-Level Aggregation (System Core)</h4>
+                    <p>For <code>PUBLIC</code> materials like Chì, restructure the MRP engine to aggregate all demand and all issuance at the <strong>BOM level</strong> across active VPOs before calculating the net shortage. This physically prevents the warehouse's lazy attribution habits from breaking the purchasing math, and simplifies the planner's view.</p>
+                </li>
+            </ul>
+        </section>
+
+    </main>
+</body>
+</html>

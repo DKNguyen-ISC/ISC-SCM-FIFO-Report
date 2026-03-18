@@ -1,0 +1,59 @@
+V2512008C01	12	476.6
+V2512005C02	1	440.0
+V2510009C06	1	436.0
+V2511041C01	1	364.0
+V2511004C05	1	300.0
+V2510009C05	1	298.0
+V2601003C04	1	291.7
+V2601003C07	1	291.7
+V2601003C03	1	291.7
+V2601003C13	1	291.7
+V2601003C06	1	291.7
+V2601003C05	1	291.7
+V2601003C14	1	291.7
+V2601003C10	1	291.7
+V2603002C02	1	210.0
+V2512002C02	2	187.5
+V2510012C04	1	155.0
+V2512034C03	2	37.5
+
+============================================================
+Q: 6. PR_Draft Chì by HAS_ISSUANCE_DATA
+============================================================
+ERROR: 400 Syntax error: Expected end of input but got keyword ROWS at [1:36]; reason: invalidQuery, location: query, message: Syntax error: Expected end of input but got keyword ROWS at [1:36]
+
+Location: US
+Job ID: 94acbd8b-4490-4e65-80ae-5b5c095e4957
+
+
+============================================================
+Q: 7. Material_Demand_VIEW Chì breakdown
+============================================================
+ERROR: 400 Unrecognized name: SHORTAGE_ISSUANCE at [1:110]; reason: invalidQuery, location: query, message: Unrecognized name: SHORTAGE_ISSUANCE at [1:110]
+
+Location: US
+Job ID: 4381db6f-f9c1-4702-a8b0-668e78d13827
+
+
+============================================================
+Q: 8. Demand vs Issuance Coverage
+============================================================
+coverage	cnt
+DEMAND_ONLY	755
+IN_BOTH	80
+ISSUANCE_ONLY	2
+
+============================================================
+Q: 9. M2_Pipeline_Ledger latest Chì snapshot
+============================================================
+ERROR: 400 Unrecognized name: SHORTAGE_ISSUANCE; Did you mean NET_SHORTAGE_ISSUANCE? at [1:84]; reason: invalidQuery, location: query, message: Unrecognized name: SHORTAGE_ISSUANCE; Did you mean NET_SHORTAGE_ISSUANCE? at [1:84]
+
+Location: US
+Job ID: f0541fcb-cc62-460f-8f7f-8b4ca7b67d38
+
+
+============================================================
+Q: 10. Unique BOM coverage summary
+============================================================
+total_chi_boms_in_demand	with_issuance	without_issuance	demand_without_issuance_qty
+835	0	835	182991.8

@@ -1,0 +1,319 @@
+erDiagram
+    direction LR
+    %% =========================================================
+    %% STYLING (Strict Match to Flowchart v55)
+    %% =========================================================
+    classDef master fill:#ecf9ff,stroke:#51abff,stroke-width:3px
+    classDef staging fill:#f8fff1,stroke:#7dd253,stroke-width:2px
+    classDef transaction_document fill:#faf3ff,stroke:#9562dc,stroke-width:3px
+    classDef transaction_document_draft fill:#ffffff,stroke:#e11d48,stroke-width:2px,stroke-dasharray:5
+    classDef transaction_event fill:#fffcec,stroke:#fbc14e,stroke-width:3px
+    classDef transaction_log fill:#f1f5f9,stroke:#475569,stroke-width:2px
+    classDef virtual_view fill:#e0f2fe,stroke:#0284c7,stroke-width:2px,stroke-dasharray:5
+    classDef process_node fill:#e0e7ff,stroke:#4338ca,stroke-width:2px,stroke-dasharray:2
+    classDef hub fill:#f1f5f9,stroke:#334155,stroke-width:4px
+
+    %% =========================================================
+    %% 🏛️ LAYER 1: MASTER & PHYSICAL DATA (Blue)
+    %% =========================================================
+
+    Stock_Data {
+        string STOCK_ID PK "STK_ + MD5(BOM_UPDATE + SNAPSHOT_DATE)"
+        string BOM_UPDATE FK "The Active Item (Specific Version)"
+        STRING BOM_VIETNAMESE_DESCRIPTION "Denormalized for readability"
+        
+        float INVENTORY_QTY "The Hard Truth - Monday Physical Count"
+        date SNAPSHOT_DATE "The Monday Date (Business Date)"
+        
+        string FULFILLMENT_MODE "Derived: PUBLIC/PRIVATE (BOM_Data.MAIN_GROUP check)"
+        
+        string UPDATED_BY "MONDAY_PROTOCOL (System)"
+        timestamp UPDATED_AT "Last Reset Timestamp"
+    }
+
+    %% =========================================================
+    %% 📄 THE STATUS HUB (Grey - The Bridge)
+    %% =========================================================
+    PO_Line_Tracking {
+        string PO_LINE_ID PK "Matches PO_Line.PO_LINE_ID"
+        string PO_DOCUMENT_ID FK "Header Link"
+
+        string BOM_UPDATE FK "Material Code (Matching Key)"
+        string FULFILLMENT_MODE "PUBLIC vs PRIVATE (Filter Key)"
+        
+        string VPO "Project Traceability"
+        string PIC "Session Owner (For Portal Filter)"
+        string PO_LINE_NOTE "Buyer's Instruction (External)"
+        string DATE_CODE "Delivery Batch Code"
+        
+        float ORDER_QTY "Level 1: What we asked"
+        float CONFIRMED_QTY "Level 2: What they promised"
+        float LOADED_QTY "Level 3: What is on the boat"
+        float ACTUAL_RECEIVED_QTY "Level 4: What we got"
+        
+        date FINAL_REQUESTED_DELIVERY_DATE "COALESCE(BUYER_OVERRIDE, SYSTEM_SUGGESTED)"
+        date AGREED_DELIVERY_DATE "Supplier's Commitment"
+        date CURRENT_ETA "Logistics Estimate"
+        date ACTUAL_ARRIVAL_DATE "Physical Receipt Date"
+        
+        string SUPPLIER_FEEDBACK_NOTE "Supplier's Voice"
+        
+        string STATUS "ISSUED/CONFIRMED/DELAYED/IN_TRANSIT/ARRIVED/CANCELLED"
+        string CLOSURE_REASON "AUTO_JANITOR/MANUAL/SYSTEM"
+        boolean IS_ACTIVE "TRUE = Supply. FALSE = Archived"
+        
+        timestamp INITIALIZED_AT "When PO was issued"
+        string UPDATED_BY "Last Actor"
+        timestamp UPDATED_AT "Last Modified"
+        timestamp LAST_SEEN_IN_SYNC "Orphan detection (ZXH AutoSync)"
+    }
+
+    %% =========================================================
+    %% 👁️ LAYER 2: VIRTUAL VIEWS (The Lens)
+    %% =========================================================
+    Unified_Supply_Stack_VIEW {
+        string SOURCE_TYPE "STOCK or PO"
+        string UNIFIED_ID "Stock_ID or PO_LINE_ID"
+        string BOM_UPDATE FK "Matching Key"
+        
+        float QTY_AVAILABLE "STOCK: INVENTORY_QTY | PO: COALESCE(RECEIVED, LOADED, CONFIRMED, ORDER)"
+        
+        date SUPPLY_DATE "STOCK: SNAPSHOT_DATE | PO: COALESCE(ARRIVAL, ETA, AGREED, REQUESTED)"
+        
+        timestamp UPDATED_AT "Source Table Timestamp"
+    }
+
+    Material_Demand_VIEW {
+        string DEMAND_ID PK "BOM_ORDER_LIST_FINAL_ID (From M1)"
+        string PRODUCTION_ORDER_ID FK "Header Link"
+        string BOM_UPDATE FK "Material Code"
+        string FULFILLMENT_MODE "PUBLIC/PRIVATE (Inherited from M1)"
+        
+        string VPO "Project Code (Grouping Key)"
+        string ORDER_LIST_NOTE "Strategy Context (M1 Note)"
+        string SKU_CODE "Denormalized Context"
+        
+        date REQUESTED_DELIVERY_DATE "WIP_START - 7 Days (Primary Sort)"
+        date RECEIVED_VPO_DATE "Secondary FIFO Tiebreaker"
+        
+        %% CLASSIFICATION (From BOM_Data JOIN)
+        string MAIN_GROUP "Classification from BOM_Data"
+        string SUB_GROUP "Classification from BOM_Data"
+        string PIC "Material Owner from BOM_Data"
+        
+        %% DUAL-METHOD DEMAND (Phase 1)
+        float SHORTAGE_COMPLETION "Method 1: (Ordered-Built) * BOM_CONSUMPTION * (1+TOLERANCE)"
+        float SHORTAGE_ISSUANCE "Method 2: Full_MRP_Qty - Already_Issued"
+        float GROSS_DEMAND_QTY "Active Column (Currently = SHORTAGE_COMPLETION)"
+        
+        %% SYSTEM FLAGS
+        boolean HAS_ISSUANCE_DATA "TRUE when Material_Issuance has record"
+        string CALC_METHOD_USED "COMPLETION or ISSUANCE"
+        
+        timestamp CALCULATED_AT "View Evaluation Time"
+    }
+
+    %% =========================================================
+    %% ❄️ LAYER 2.5: THE FREEZE (Critical Architecture)
+    %% =========================================================
+    Material_Demand_SNAPSHOT {
+        string DEMAND_ID PK "Copy of View ID"
+        string PRODUCTION_ORDER_ID FK "Frozen Header Link"
+        string BOM_UPDATE FK "Frozen Material Code"
+        string FULFILLMENT_MODE "Frozen Mode"
+        
+        string VPO "Frozen Project Code"
+        string ORDER_LIST_NOTE "Frozen Strategy Note"
+        string SKU_CODE "Frozen Context"
+        
+        date REQUESTED_DELIVERY_DATE "Frozen Target Date"
+        date RECEIVED_VPO_DATE "Frozen FIFO Tiebreaker"
+        
+        %% FROZEN CLASSIFICATION
+        string MAIN_GROUP "Frozen Classification"
+        string SUB_GROUP "Frozen Classification"
+        string PIC "Frozen Material Owner"
+        
+        %% FROZEN DUAL-METHOD DEMAND
+        float SHORTAGE_COMPLETION "Frozen Method 1"
+        float SHORTAGE_ISSUANCE "Frozen Method 2"
+        float GROSS_DEMAND_QTY "Frozen Active Demand"
+        
+        %% FROZEN FLAGS
+        boolean HAS_ISSUANCE_DATA "Frozen Issuance Flag"
+        string CALC_METHOD_USED "Frozen Calc Method"
+        
+        timestamp CALCULATED_AT "When Snapshot was Taken"
+    }
+
+    %% =========================================================
+    %% 🧠 LAYER 3: THE MATCHING ENGINE (The Brain)
+    %% =========================================================
+    Matching_Engine_VIEW {
+        string DEMAND_ID FK "From Snapshot"
+        string SUPPLY_SOURCE_ID FK "From Supply Stack"
+        string BOM_UPDATE FK "Match Key"
+        string VPO "Project-Aware Grouping Key"
+        
+        float ALLOCATED_QTY "FIFO Range Intersection Result"
+        
+        string ALLOCATION_TYPE "Derived: HARD(Stock) or SOFT(PO)"
+    }
+
+    SP_RUN_MATCHING_ENGINE {
+        string PROCESS_TYPE "Stored Procedure Execution"
+        string LOGIC_FLOW "1. Freeze Snapshot | 2. Public FIFO | 3. Private Bypass | 4. Generate Outputs"
+        
+        string STEP_1 "TRUNCATE + INSERT Material_Demand_SNAPSHOT"
+        string STEP_2 "Calculate Allocations via Matching_Engine_VIEW (Uses GROSS_DEMAND_QTY)"
+        string STEP_3 "INSERT Pegging_Allocations (Success Cases)"
+        string STEP_4 "INSERT PR_Draft (Shortage Cases)"
+        string STEP_5 "Archive to M2_Pipeline_Ledger (Dual-Method Preservation)"
+        string STEP_6 "Write M2_Daily_Stats (Run Health Metrics)"
+    }
+
+    %% =========================================================
+    %% 🟣 LAYER 4: OUTPUTS (Purple)
+    %% =========================================================
+    Pegging_Allocations {
+        string ALLOCATION_ID PK "ALG_ + MD5(DEMAND_ID + SUPPLY_SOURCE_ID)"
+        string CALCULATION_BATCH_ID "BATCH_YYYYMMDD (Run Identifier)"
+        
+        string DEMAND_ID FK "Link to Material_Demand"
+        string BOM_UPDATE FK "Material Code"
+        
+        string SUPPLY_SOURCE_ID FK "Stock_ID or PO_LINE_ID"
+        string ALLOCATION_TYPE "HARD_RESERVE (Stock) or SOFT_LINK (PO)"
+        
+        float ALLOCATED_QTY "Intersection Quantity"
+        timestamp ALLOCATED_AT "When Calculation Ran"
+    }
+
+    PR_Draft {
+        string DRAFT_PR_ID PK "PRD_ + MD5(DEMAND_ID + TYPE)"
+        string DEMAND_ID FK "Origin Link"
+        string BOM_UPDATE FK "Material Code"
+        
+        string VPO "Traceability (COALESCE(VPO, 'GENERAL_STOCK'))"
+        string ORDER_LIST_NOTE "Strategy Note (Passed from M1)"
+        
+        float SHORTAGE_QTY "Unfilled Demand (DEMAND - ALLOCATED)"
+        string FULFILLMENT_MODE "PUBLIC/PRIVATE"
+        string REQUEST_TYPE "SHORTAGE or PRIVATE_ORDER"
+        
+        date REQUESTED_DELIVERY_DATE "Target Delivery Date"
+        timestamp CREATED_AT "When Draft was Generated"
+    }
+
+    %% =========================================================
+    %% 📊 LAYER 5: M2 ANALYTICS (NEW - Pipeline Intelligence)
+    %% Ref: Config_Schema [952-1038]
+    %% =========================================================
+    M2_Pipeline_Ledger {
+        date LEDGER_DATE "Partition Column (1 per day)"
+        string RUN_SOURCE "NIGHTLY / MANUAL / CHAIN"
+        string BATCH_ID "Links to M2_Daily_Stats"
+        
+        string DEMAND_ID "Row key from SNAPSHOT"
+        string PRODUCTION_ORDER_ID
+        string BOM_UPDATE
+        string VPO
+        string FULFILLMENT_MODE "PUBLIC / PRIVATE"
+        
+        float SHORTAGE_COMPLETION "Gross demand - Completion method"
+        float SHORTAGE_ISSUANCE "Gross demand - Issuance method"
+        float GROSS_DEMAND_QTY "Active gross demand"
+        float NET_SHORTAGE_COMPLETION "Net shortage - Completion"
+        float NET_SHORTAGE_ISSUANCE "Net shortage - Issuance"
+        float NET_SHORTAGE_QTY "Active net shortage"
+        float SUPPLY_ALLOCATED_QTY "Derived: GROSS - NET"
+        
+        string MAIN_GROUP
+        string SUB_GROUP
+        string PIC
+        string SKU_CODE
+        date REQUESTED_DELIVERY_DATE
+        string ORDER_LIST_NOTE
+        
+        boolean HAS_ISSUANCE_DATA
+        string CALC_METHOD_USED "COMPLETION / ISSUANCE"
+        boolean HAS_SHORTAGE
+        
+        timestamp PRESERVED_AT "When archived"
+    }
+
+    M2_Daily_Stats {
+        date RUN_DATE PK "Date of M2 run"
+        string RUN_SOURCE PK "NIGHTLY / MANUAL / CHAIN"
+        string BATCH_ID "Links to M2_Pipeline_Ledger"
+        
+        string RUN_STATUS "SUCCESS / FAILED"
+        float RUN_DURATION_SECONDS
+        string ERROR_MESSAGE
+        
+        integer TOTAL_SHORTAGE_COUNT
+        float TOTAL_NET_SHORTAGE_QTY
+        integer TOTAL_ALLOCATION_COUNT
+        
+        integer SHORTAGE_COUNT_COMPLETION
+        integer SHORTAGE_COUNT_ISSUANCE
+        float SHORTAGE_TOTAL_COMPLETION_QTY
+        float SHORTAGE_TOTAL_ISSUANCE_QTY
+        integer METHOD_DELTA_COUNT "Items where methods disagree >10%"
+        
+        string TOP_OFFENDER_BOM_UPDATE
+        float TOP_OFFENDER_QTY
+        float TOP_OFFENDER_SHARE_PCT
+        
+        boolean IS_ANOMALY
+        string ANOMALY_REASON
+        
+        timestamp CREATED_AT
+    }
+
+    %% =========================================================
+    %% RELATIONSHIPS
+    %% =========================================================
+    
+    %% 1. Inputs feed the Virtual Views
+    Stock_Data ||--o{ Unified_Supply_Stack_VIEW : "1a. normalizes_stock (PUBLIC only, QTY > 0)"
+    PO_Line_Tracking ||--o{ Unified_Supply_Stack_VIEW : "1b. normalizes_PO (PUBLIC, ACTIVE, Lazy User Filter)"
+    
+    %% 2. The Nightly Freeze (Stop Motion)
+    Material_Demand_VIEW }|..|| Material_Demand_SNAPSHOT : "2. freezes_nightly (TRUNCATE + INSERT)"
+
+    %% 3. Views feed the Logic Engine
+    Unified_Supply_Stack_VIEW ||..|| Matching_Engine_VIEW : "3a. feeds_supply (FIFO sorted)"
+    Material_Demand_SNAPSHOT ||..|| Matching_Engine_VIEW : "3b. feeds_demand (Uses GROSS_DEMAND_QTY)"
+    
+    %% 4. Engine Orchestration (Process Node)
+    Material_Demand_SNAPSHOT }|..|| SP_RUN_MATCHING_ENGINE : "4a. input_frozen_demand"
+    Unified_Supply_Stack_VIEW }|..|| SP_RUN_MATCHING_ENGINE : "4b. input_live_supply"
+    Matching_Engine_VIEW }|..|| SP_RUN_MATCHING_ENGINE : "4c. powers_calculation"
+    
+    %% 5. Engine generates Allocations
+    Matching_Engine_VIEW ||--o{ Pegging_Allocations : "5a. SUCCESS: generates_pegging (N allocations per Demand)"
+    
+    %% 6. Traceability Links
+    Material_Demand_SNAPSHOT ||--o{ Pegging_Allocations : "6a. is_fulfilled_by (Validates DEMAND_ID FK)"
+    
+    %% 7. Shortage Path (Two Routes)
+    SP_RUN_MATCHING_ENGINE ||--o{ PR_Draft : "7a. PUBLIC_SHORTAGE: generates_draft (Calc: Demand - Allocated)"
+    Material_Demand_SNAPSHOT ||--o{ PR_Draft : "7b. PRIVATE_BYPASS: direct_passthrough (1:1 for PRIVATE mode)"
+
+    %% 8. M2 Analytics (NEW - Pipeline Intelligence)
+    SP_RUN_MATCHING_ENGINE ||--|{ M2_Pipeline_Ledger : "8a. archives_run (Append-only ledger)"
+    SP_RUN_MATCHING_ENGINE ||--|| M2_Daily_Stats : "8b. logs_health (1 row per run)"
+    M2_Daily_Stats ||..|{ M2_Pipeline_Ledger : "8c. links_via_BATCH_ID"
+
+    %% =========================================================
+    %% CLASS ASSIGNMENTS
+    %% =========================================================
+    class Stock_Data master
+    class PO_Line_Tracking hub
+    class Matching_Engine_VIEW,Material_Demand_VIEW,Unified_Supply_Stack_VIEW virtual_view
+    class Material_Demand_SNAPSHOT staging
+    class Pegging_Allocations transaction_document
+    class PR_Draft transaction_document_draft
+    class SP_RUN_MATCHING_ENGINE process_node
+    class M2_Pipeline_Ledger,M2_Daily_Stats transaction_log

@@ -1,0 +1,170 @@
+######################################################################
+# PART 3: ASSIGN_SOURCING SQL EXPLORATION RESULTS
+######################################################################
+
+======================================================================
+📊 Q1 — Tolerance Value Distribution for Chì
+======================================================================
+Row	BOM_TOLERANCE	line_count	unique_boms	unique_pos	avg_consumption	min_consumption	max_consumption
+1	0.04	3145	728	190	0.0653	0.0139	1.0
+2	0.03	2088	654	230	0.1217	0.02	1.0
+3	0.194	960	163	13	0.0135	0.0083	0.0208
+4	0.07	718	147	24	0.033	0.0139	0.0833
+5	0.13	321	107	46	0.1456	0.0417	1.0
+6	0.11	175	71	64	0.3751	0.0417	1.0
+7	0.08	153	32	16	0.1046	0.0417	0.1429
+8	0.15	44	11	38	0.7958	0.0769	1.0
+
+======================================================================
+📊 Q2 — BOMs with Multiple Tolerance Values Across POs
+======================================================================
+Row	BOM_UPDATE	description	distinct_tolerances	min_tol	max_tol	tol_spread	total_lines	po_count
+1	302011627	光明不油芯HBφ2.9mm(1)90-92mm(2010)	4	0.03	0.15	0.12	8	8
+2	302014853	光明油芯HB(24D)φ3.5mm(1)181-183mm(2012)	5	0.03	0.15	0.12	18	18
+3	302014740	光明油芯2Hφ2.0mm(1)181-183mm(2012)	3	0.03	0.15	0.12	7	7
+4	302064308	普通彩芯1788 CP 510 红色(龙口益友供应1011)(含钛白粉)φ2.9mm L90±1mm	4	0.03	0.15	0.12	9	9
+5	302004611	光明油芯2Bφ2.42mm(1)181-183mm(2009)	4	0.03	0.15	0.12	66	66
+6	302004906	光明油芯6Bφ3.6mm(1)181-183mm(2009)	4	0.03	0.15	0.12	15	15
+7	302014364	光明油芯HBφ2.2mm(1)181-183mm(2012)	5	0.03	0.15	0.12	113	113
+8	302029658	超级顺滑系列287CSP2#533兰色φ4.0mm(0)181±1mm(SuperPremium超级顺滑彩芯)马可制造	4	0.03	0.13	0.1	9	9
+9	302016906	马可制造马可标准系列339C539翡翠绿φ4.0mm(1)88±1mm(JUMBO配方)	3	0.03	0.13	0.1	5	5
+10	302016859	马可制造马可标准系列151C506橙色φ4.0mm(1)88±1mm(JUMBO配方)	3	0.03	0.13	0.1	5	5
+... (and 90 more rows)
+
+======================================================================
+📊 Q3 — Gross Demand Comparison: CS Tolerance vs ISC 10%
+======================================================================
+Row	total_lines	total_demand_cs_tol	total_demand_isc_10pct	total_delta	delta_pct	avg_cs_tolerance	stddev_cs_tolerance	count_below_10pct	count_exactly_10pct	count_above_10pct
+1	3056	490293.91	511201.17	-20907.26	-4.09	0.0504	0.0301	2720	0	336
+
+======================================================================
+📊 Q4 — Per-BOM Tolerance Delta (Top Deviators)
+======================================================================
+Row	BOM_UPDATE	desc	cs_tol	VPO	demand_cs	demand_isc	delta	delta_pct
+1	302052444	高级黑芯4Bφ2.6mm L181mmA	0.03	V2601002C01	10744.96	11475.2	-730.24	6.36
+2	302052444	高级黑芯4Bφ2.6mm L181mmA	0.03	V2602001C01	10744.96	11475.2	-730.24	6.36
+3	302052444	高级黑芯4Bφ2.6mm L181mmA	0.03	V2602002C01	10744.96	11475.2	-730.24	6.36
+4	302011627	光明不油芯HBφ2.9mm(1)90-92mm(2010)	0.03	V2601010C17	4291.67	4583.34	-291.67	6.36
+... (and 36 more rows)
+
+======================================================================
+📊 Q5 — Specific BOM 302014740 Deep Dive
+======================================================================
+Row	BOM_UPDATE	PRODUCTION_ORDER_ID	VPO	BOM_CONSUMPTION	BOM_TOLERANCE	FINISHED_GOODS_ORDER_QTY	completion_qty	demand_cs_tol	demand_isc_10pct	DATA_STATE	WORK_IN_PROCESS_START_DATE
+1	302014740	7476	V2511002C08	1.0	0.15	347.22	0.0	399.3	381.94	RELEASED	2026-03-14
+2	302014740	7478	V2511002C10	1.0	0.15	208.33	0.0	239.58	229.16	RELEASED	2026-03-16
+3	302014740	7708	V2512031C01	0.166667	0.03	32.0	0.0	5.49	5.87	RELEASED	2026-03-21
+4	302014740	7911	V2602010C01	0.166667	0.03	116.0	0.0	19.91	21.27	PARTIALLY_RELEASED	2026-05-18
+5	302014740	7895	V2602013C02	0.166667	0.03	146.0	0.0	25.06	26.77	PARTIALLY_RELEASED	2026-05-18
+
+======================================================================
+📊 Q6 — Multi-VPO BOMs in PR_Draft
+======================================================================
+Row	BOM_UPDATE	row_count	distinct_vpos	total_shortage	total_nsc	total_nsi	vpo_list	mode
+1	302016019	8	8	516.56	516.56	516.56	V2512011C03, ...	PUBLIC
+2	302024313	8	8	508.28	508.28	508.28	V2512011C03, ...	PUBLIC
+3	302024620	8	8	485.85	485.85	485.85	V2512007C06, ...	PUBLIC
+... (and 33 more rows)
+
+======================================================================
+📊 Q7 — MOQ/SPQ Ceiling Inflation: Per-VPO vs Aggregated
+======================================================================
+Row	BOM_UPDATE	vpo_count	spq	total_shortage	order_per_vpo	order_aggregated	waste_units	waste_pct
+1	302024313	8	1.0	508.28	511.0	509.0	2.0	0.4
+2	302015936	8	1.0	354.0	356.0	354.0	2.0	0.6
+3	302021814	8	1.0	458.99	461.0	459.0	2.0	0.4
+... (and 28 more rows)
+
+======================================================================
+📊 Q8 — Grand Total Savings from Aggregation
+======================================================================
+Row	multi_vpo_boms	single_vpo_boms	total_order_per_vpo	total_order_aggregated	total_savings	savings_pct
+1	36	23	9357.0	9320.0	37.0	0.4
+
+======================================================================
+📊 Q9 — Supplier_Capacity MOQ/SPQ Distribution
+======================================================================
+Row	MOQ	entries	unique_boms	suppliers	avg_price	avg_leadtime
+1	null	2051	2051	1	41304.08	37.0
+
+======================================================================
+📊 Q10 — BOM 302023503 Detailed Breakdown
+======================================================================
+Row	DRAFT_PR_ID	BOM_UPDATE	VPO	net_shortage	nsc	nsi	FULFILLMENT_MODE	REQUESTED_DELIVERY_DATE	ORDER_LIST_NOTE
+1	PRD_eb8d3cc952c2ab13824408a1b3f549dd	302023503	V2512007C06	531.0976	531.0976	531.0976	PUBLIC	2026-03-06	null
+2	PRD_7f408e2dba86fe8d0a4ed969f799a463	302023503	V2601015C01	14.3157	14.3157	14.3157	PUBLIC	null	null
+
+======================================================================
+📊 Q11 — BOM-Level Issuance vs Demand
+======================================================================
+Row	BOM_UPDATE	demand_vpos	issued_vpos	demand	issued	gap
+1	302014364	44	1	118650.56	8800.0	109850.56
+... (and 29 more rows)
+
+======================================================================
+📊 Q12 — VPO Attribution Anomalies
+======================================================================
+Row	BOM_UPDATE	VPO	demand	issued	excess	flag
+1	302014364	V2511005C01	10175.0	8800.0	-1375.0	NORMAL
+2	302013418	V2511002C13	0.0	361.11	361.11	OVER_ATTRIBUTED
+... (and 28 more rows)
+
+======================================================================
+📊 Q13 — BOM-Level Consistency Check
+======================================================================
+Row	BOM_UPDATE	issuance_total	demand_view_joined	diff	issuance_records
+1	302079261	1034.72	0.0	1034.72	2
+... (and 19 more rows)
+
+======================================================================
+📊 Q14 — Specific BOMs from Comparision_LeadPlan_vs_SystemM3
+======================================================================
+Row	BOM_UPDATE	VPO	PRODUCTION_ORDER_ID	demand	demand_completion	demand_issuance	issued	HAS_ISSUANCE_DATA	CALC_METHOD_USED
+1	302038502	V2512028C02	7698	10.83	10.83	10.83	0.0	false	COMPLETION
+2	302038502	V2512028C04	7703	15.16	15.16	15.16	0.0	false	COMPLETION
+3	302038502	V2512034C02	7702	14.86	14.86	14.86	0.0	false	COMPLETION
+4	302038502	V2512034C03	7716	0.0	3.57	0.0	18.75	true	ISSUANCE
+... (and 13 more rows)
+
+======================================================================
+📊 Q15 — What Aggregated Session Looks Like
+======================================================================
+Row	BOM_UPDATE	vpos	vpo_count	total_shortage	total_nsc	total_nsi	earliest_dd	modes	notes
+1	302067501	V2602003C01|V2602003C02	2	86.26	86.26	86.26	null	PUBLIC	null
+... (and 49 more rows)
+
+======================================================================
+📊 Q16 — Ngàn-Specific Aggregated Session
+======================================================================
+Row	BOM_UPDATE	total_rows	vpo_count	vpo_list	total_shortage	nsc_sum	nsi_sum	earliest_dd	notes
+1	302016019	8	8	V2512011C03|V2512011C05...	516.56	516.56	516.56	2026-03-08	Thay thế ID 7533|Thay thế ID 7534
+... (and 49 more rows)
+
+======================================================================
+📊 Q17 — Total Supply per BOM (Stock + On-Way POs)
+======================================================================
+Row	BOM_UPDATE	demand	stock	po_on_way	total_supply	bom_net_shortage
+1	302016008	1354.45	791.32	0.0	791.32	563.13
+... (and 29 more rows)
+
+======================================================================
+📊 Q18 — Compare BOM-Level Shortage vs PR_Draft Sum
+======================================================================
+Row	BOM_UPDATE	demand	stock	po_supply	bom_shortage	pr_draft_sum	diff
+1	302016086	2252.99	1385.44	583.38	284.17	645.31	-361.14
+2	302024620	1534.18	964.99	138.9	430.29	485.85	-55.56
+... (and 16 more rows)
+
+======================================================================
+📊 Q19 — FULFILLMENT_MODE Distribution
+======================================================================
+Row	FULFILLMENT_MODE	MAIN_GROUP	bom_count	line_count
+1	PRIVATE	Bao bì	544	2858
+2	PUBLIC	Chì	1294	7604
+
+======================================================================
+📊 Q20 — Issuance Coverage Status After Recent Fixes
+======================================================================
+Row	HAS_ISSUANCE_DATA	CALC_METHOD_USED	demand_rows	unique_boms	total_demand	total_completion	total_issuance
+1	false	COMPLETION	2954	824	484776.3	484776.3	498534.3
+2	true	ISSUANCE	102	102	14543.4	5517.6	14543.4

@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Báo cáo phân tích hệ thống Assign Sourcing cho nhóm vật tư PUBLIC - Chì">
+    <title>P3: Kho | ISC Report V4 | ISC Supply Chain</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Syne:wght@700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="Style.css">
+
+</head>
+<body>
+    <nav class="sidebar">
+        <div class="sidebar-header">
+            <div class="logo-circle"><i class="fa-solid fa-chart-pie"></i></div>
+            <div class="brand">
+                <h2>ISC Report</h2>
+                <p>Data & Analytics</p>
+            </div>
+        </div>
+        
+        <ul class="nav-links">
+            <li><a href="index.html" id="nav_index"><span class="icon-wrap"><i class="fa-solid fa-bolt"></i></span>0. Tóm tắt điều hành</a></li>
+            <li><a href="p1_tolerance.html" id="nav_p1"><span class="icon-wrap"><i class="fa-solid fa-scale-balanced"></i></span>1. P1: Tolerance</a></li>
+            <li><a href="p2_vpo_fragmentation.html" id="nav_p2"><span class="icon-wrap"><i class="fa-solid fa-cubes-stacked"></i></span>2. P2: VPO Fragmentation</a></li>
+            <li><a href="p3_warehouse.html" id="nav_p3" class="active"><span class="icon-wrap"><i class="fa-solid fa-warehouse"></i></span>3. P3: Issuance Laziness</a></li>
+            <li><a href="validation.html" id="nav_valid"><span class="icon-wrap"><i class="fa-solid fa-laptop-code"></i></span>4. Kiểm chứng Logic</a></li>
+            <li><a href="solutions.html" id="nav_sol"><span class="icon-wrap"><i class="fa-solid fa-lightbulb"></i></span>5. Đề xuất Thay đổi</a></li>
+            <li><a href="conclusion.html" id="nav_conc"><span class="icon-wrap"><i class="fa-solid fa-book-open"></i></span>6. Hướng dẫn đọc & Kết luận</a></li>
+        </ul>
+
+        <div class="sidebar-footer">
+            <p>Version V4 – 2026-03</p>
+        </div>
+    </nav>
+    <main class="content">
+        <header class="top-header" id="header">
+            <div class="header-content">
+                <div class="title-area">
+                    <span class="eyebrow">Báo cáo phân tích chuyên sâu · PUBLIC – Chì</span>
+                    <h1>Assign Sourcing <span class="text-gradient">Analysis Report</span></h1>
+                </div>
+                <div class="badges">
+                    <span class="badge badge-glass tooltip"
+                        data-tooltip="Ban lãnh đạo, phòng Kế hoạch SX, Kho, Mua hàng">
+                        <i class="fa-solid fa-users"></i> Ban quản lý &amp; Operations
+                    </span>
+                    <span class="badge badge-accent"><i class="fa-solid fa-code-commit"></i> V4 · 2026-03</span>
+                </div>
+            </div>
+        </header>
+        
+        <section id="p3-warehouse" class="section-container animate-on-scroll">
+            <div class="section-header">
+                <h2><i class="fa-solid fa-warehouse"></i> 3. Nguyên nhân P3 – Thực tế Nhập liệu Kho</h2>
+                <div class="divider"></div>
+            </div>
+
+            <p class="mb-6">Kho phát hàng theo pallet/batch lớn, nhưng trên ứng dụng hạch toán nhân viên thường
+                <strong>dồn toàn bộ số phát vào 1 VPO đầu tiên</strong> trên giấy, không chia đúng cho tất cả VPO cùng
+                chạy BOM đó.</p>
+
+            <details class="tech-accordion mb-6" open>
+                <summary>3.1 · Luồng dữ liệu kho &amp; thói quen nhập liệu <i class="fa-solid fa-chevron-down"></i>
+                </summary>
+                <div class="accordion-content">
+                    <div class="grid-2">
+                        <div>
+                            <h4 class="mb-3">Luồng dữ liệu thực tế:</h4>
+                            <div class="flow-steps">
+                                <div class="step">Sheet Google "5. Link Lead plan" <span>(Nhập tay của kho)</span></div>
+                                <div class="step">M4 Lead_Issuance_AutoSync <span>(Sync tự động)</span></div>
+                                <div class="step">Sheet "6. Link Cấp Phát" <span>(Bảng trung gian)</span></div>
+                                <div class="step">Material_Issuance table <span>(BOM_UPDATE, VPO,
+                                        CUMULATIVE_ISSUANCE_QTY)</span></div>
+                            </div>
+                            <p class="mt-4 text-muted" style="font-size:0.86rem;">Cấu trúc sheet: Hàng = BOM_UPDATE, Cột
+                                = từng VPO, Ô = số lượng phát.</p>
+                        </div>
+                        <div>
+                            <h4 class="mb-3">Kỳ vọng đúng vs Thực tế quan sát:</h4>
+                            <div class="code-mac">
+                                <div class="mac-header">
+                                    <span class="mac-btn red"></span><span class="mac-btn yellow"></span><span
+                                        class="mac-btn green"></span>
+                                    <span class="mac-title">BOM 302023503 · Issuance data</span>
+                                </div>
+                                <pre><code><span class="code-comment">-- Kỳ vọng (đúng):</span>
+VPO1: phát <span class="code-highlight">14</span>
+VPO2: phát <span class="code-highlight">530</span>
+Tổng: 544 ✓
+
+<span class="code-comment">-- Thực tế quan sát (lười chia):</span>
+VPO1: phát <span class="code-key">0</span>   ← hệ thống: "thiếu 14"
+VPO2: phát <span class="code-key">544</span>  ← hệ thống: "dư lố"
+Tổng: 544 ✓ (đúng BOM, sai VPO)</code></pre>
+                            </div>
+                            <p class="mt-3 text-muted" style="font-size:0.85rem;"><strong>Lý do:</strong> Cùng một BOM,
+                                nhiều VPO sản xuất trong 1 ngày. Kho phát từ 1 pallet lớn, người nhập liệu dồn hết vào 1
+                                VPO để đỡ tốn thời gian.</p>
+                        </div>
+                    </div>
+                </div>
+            </details>
+
+            <h3 class="mb-4">3.2 · Hệ quả với hệ thống</h3>
+            <div class="visual-flow mb-6">
+                <div class="warehouse-box">
+                    <i class="fa-solid fa-boxes-stacked"></i>
+                    <span>Tổng phát Batch ra xưởng: <strong>544 đ.vị</strong></span>
+                </div>
+                <div class="flow-arrows"><i class="fa-solid fa-arrow-right-long text-muted"></i></div>
+                <div class="system-boxes">
+                    <div class="sys-box error">
+                        <div class="sys-title">VPO 1 (Nhu cầu: 14)</div>
+                        <div class="sys-val">Ghi sổ: 0</div>
+                        <div class="badge-status">Hệ thống: Thiếu!</div>
+                    </div>
+                    <div class="sys-box warning">
+                        <div class="sys-title">VPO 2 (Nhu cầu: 530)</div>
+                        <div class="sys-val">Ghi sổ: 544</div>
+                        <div class="badge-status">Hệ thống: Dư lố</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="alert alert-info mb-6">
+                <i class="fa-solid fa-circle-info"></i>
+                <span><strong>Tổng phát theo BOM</strong> vẫn đúng → số vật tư thực tế ra khỏi kho là hợp lý. Chỉ sai ở
+                    bước <strong>phân bổ theo VPO</strong>.</span>
+            </div>
+
+            <details class="tech-accordion mb-6" open>
+                <summary>3.3 · Liên hệ với P2 &amp; Giải pháp cấp BOM <i class="fa-solid fa-chevron-down"></i></summary>
+                <div class="accordion-content">
+                    <p class="mb-4">Nếu vẫn bám theo VPO: hệ thống luôn bị nhiễu bởi thói quen nhập liệu kho (dồn vào 1
+                        VPO). Lead Plan không bị ảnh hưởng vì planner nhìn <strong>tổng phát theo BOM</strong>, bỏ qua
+                        phân bổ VPO chi tiết.</p>
+                    <div class="code-mac mb-4">
+                        <div class="mac-header">
+                            <span class="mac-btn red"></span><span class="mac-btn yellow"></span><span
+                                class="mac-btn green"></span>
+                            <span class="mac-title">Công thức BOM-Level Shortage</span>
+                        </div>
+                        <pre><code>BOM_TOTAL_SHORTAGE =
+    Σ GROSS_DEMAND     <span class="code-comment">-- theo BOM (tất cả VPO)</span>
+  - Σ ISSUANCE         <span class="code-comment">-- tổng phát theo BOM (bỏ qua VPO nào phát)</span>
+  - (Tồn kho hiện tại + PO đang về cho BOM)</code></pre>
+                    </div>
+                    <div class="grid-2">
+                        <div class="takeaway-box">
+                            <strong><i class="fa-solid fa-check"></i> Khi dùng BOM-level:</strong>
+                            <p class="mt-2" style="font-size:0.88rem;">VPO nào bị dồn số phát lớn hay bị ghi 0
+                                <strong>không còn quan trọng</strong>. Chỉ cần tổng phát cho BOM đó là đúng → system
+                                shortage vẫn đúng.</p>
+                        </div>
+                        <div class="takeaway-box alt">
+                            <strong><i class="fa-solid fa-wand-magic-sparkles"></i> Magic Link P2 → P3:</strong>
+                            <p class="mt-2" style="font-size:0.88rem;">Gom BOM (giải pháp P2) tự động "chữa cháy" cho
+                                lỗi phân bổ kho. Tổng phát BOM = 544, Tổng Cần = 544 → Shortage = 0. ✓</p>
+                        </div>
+                    </div>
+                </div>
+            </details>
+
+            <div class="takeaway-box mt-2">
+                <strong><i class="fa-solid fa-key"></i> Kết luận P3:</strong>
+                <p class="mt-2" style="font-size:0.92rem;">Kho khó thay đổi thói quen nhập (tốn công, không có kiểm soát
+                    hệ thống mạnh). Do đó, giải pháp bền vững là <strong>đưa logic tính shortage về cấp BOM</strong>,
+                    không dựa quá nhiều vào "đúng từng VPO".</p>
+            </div>
+        </section>
+        
+        <footer class="footer mt-12">
+            <p>Báo cáo Nội bộ ISC Supply Chain &nbsp;·&nbsp; Tháng 03–2026 &nbsp;·&nbsp; BRS V4 &nbsp;·&nbsp; <em>PUBLIC
+                    – Chì</em></p>
+        </footer>
+    </main>
+    
+    <script>
+        document.querySelectorAll('.animate-on-scroll').forEach(el => {
+            el.classList.add('is-visible'); // Trigger directly since chunked pages 
+        });
+    </script>
+    
+</body>
+</html>

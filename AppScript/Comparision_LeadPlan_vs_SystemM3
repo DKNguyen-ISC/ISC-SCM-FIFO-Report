@@ -1,0 +1,13 @@
+The BOM_UPDATE that almost right:
+302035149
+302019132
+
+
+The BOM_UPDATE that has the SCM26-Cap Phat/Lead Plan problem:
+302038502          The VPO V2512034C03 demand 3 but in the CapPhat, it is issued 19. 
+302038762          The VPO V2512034C03 demand 3 but in the CapPhat, it is issued 19. 
+
+
+
+The BOM_UPDATE that different from the LeadPlan due to different way of tolerance calculation:
+302014740

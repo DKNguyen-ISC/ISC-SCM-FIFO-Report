@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Báo cáo phân tích hệ thống Assign Sourcing cho nhóm vật tư PUBLIC - Chì">
+    <title>Báo cáo Phân tích Assign Sourcing | ISC Supply Chain</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <nav class="sidebar">
+        <div class="sidebar-header">
+            <div class="logo-circle"><i class="fa-solid fa-chart-pie"></i></div>
+            <div class="brand">
+                <h2>ISC Report</h2>
+                <p>Data & Analytics</p>
+            </div>
+        </div>
+        <ul class="nav-links">
+            <li><a href="#executive-summary" class="active"><span class="icon-wrap"><i class="fa-solid fa-bolt"></i></span> 0. Tóm tắt điều hành</a></li>
+            <li><a href="#p1-tolerance"><span class="icon-wrap"><i class="fa-solid fa-scale-balanced"></i></span> 1. P1: Tolerance</a></li>
+            <li><a href="#p2-vpo-fragmentation"><span class="icon-wrap"><i class="fa-solid fa-cubes-stacked"></i></span> 2. P2: VPO Fragmentation</a></li>
+            <li><a href="#p3-warehouse"><span class="icon-wrap"><i class="fa-solid fa-warehouse"></i></span> 3. P3: Issuance Laziness</a></li>
+            <li><a href="#logic-validation"><span class="icon-wrap"><i class="fa-solid fa-laptop-code"></i></span> 4. Kiểm chứng Logic</a></li>
+            <li><a href="#solutions"><span class="icon-wrap"><i class="fa-solid fa-lightbulb"></i></span> 5. Đề xuất Thay đổi</a></li>
+            <li><a href="#guide"><span class="icon-wrap"><i class="fa-solid fa-book-open"></i></span> 6. Hướng dẫn đọc</a></li>
+            <li><a href="#conclusion"><span class="icon-wrap"><i class="fa-solid fa-flag-checkered"></i></span> 7. Kết luận chung</a></li>
+        </ul>
+        <div class="sidebar-footer">
+            <p>Version V2 - 2026-03</p>
+        </div>
+    </nav>
+    <main class="content">
+        <header class="top-header" id="header">
+            <div class="header-content">
+                <div class="title-area">
+                    <span class="eyebrow">Báo cáo phân tích chuyên sâu</span>
+                    <h1>Assign Sourcing <span class="text-gradient">PUBLIC – Chì</span></h1>
+                </div>
+                <div class="badges">
+                    <span class="badge badge-glass tooltip" data-tooltip="Ban lãnh đạo, phòng Kế hoạch SX, Kho, Mua hàng">
+                        <i class="fa-solid fa-users"></i> Độc giả: Ban quản lý & Operations
+                    </span>
+                    <span class="badge badge-accent"><i class="fa-solid fa-code-commit"></i> V2</span>
+                </div>
+            </div>
+        </header>
+
+        <section id="executive-summary" class="section-container animate-on-scroll">
+            <div class="section-header">
+                <h2><i class="fa-solid fa-bolt"></i> 0. Tóm tắt điều hành</h2>
+                <div class="divider"></div>
+            </div>
+            <div class="card glass-card standout-box mb-8">
+                <i class="fa-solid fa-circle-exclamation box-icon"></i>
+                <p class="lead-text">Hệ thống <strong>ISC Supply Chain (M3 + BigQuery)</strong> và file Excel <strong>“Lead Plan”</strong> đang cho ra <span class="highlight-danger">số lượng thiếu hụt (shortage) khác nhau</span>, dù cùng phân tích chung một nguồn dữ liệu sản xuất ban đầu.</p>
+            </div>
+            <h3 class="mb-4">3 Nguyên nhân Cốt lõi</h3>
+            <div class="grid-3 mb-8">
+                <div class="feature-card hover-lift">
+                    <div class="card-icon bg-red-light"><i class="fa-solid fa-scale-unbalanced text-red"></i></div>
+                    <h4>P1. Tolerance Disconnect</h4>
+                    <p>Hệ thống dùng DB CS (3–4%, cá biệt 15%). Lead Plan dùng <strong>10% cố định</strong>.</p>
+                    <div class="stat-highlight text-red">~20.900 đ.vị sai lệch</div>
+                    <p class="small-text">BOM &lt; 10% tính thiếu, BOM &gt; 10% tính dư so với Lead plan.</p>
+                </div>
+                <div class="feature-card hover-lift">
+                    <div class="card-icon bg-orange-light"><i class="fa-solid fa-cubes-stacked text-orange"></i></div>
+                    <h4>P2. VPO Fragmentation</h4>
+                    <p>Hệ thống tính toán và làm tròn theo <strong>từng VPO</strong> thay vì gom nhóm theo BOM.</p>
+                    <div class="stat-highlight text-orange">Phình lượng Mua</div>
+                    <p class="small-text">CEILING lặp đi lặp lại tạo PR ảo, rối mắt planner.</p>
+                </div>
+                <div class="feature-card hover-lift">
+                    <div class="card-icon bg-blue-light"><i class="fa-solid fa-warehouse text-blue"></i></div>
+                    <h4>P3. Warehouse Laziness</h4>
+                    <p>Kho phát hàng lô lớn nhưng ghi sổ <strong>dồn vào 1 VPO</strong> đại diện thay vì chia.</p>
+                    <div class="stat-highlight text-blue">Phân bổ Sai lệch</div>
+                    <p class="small-text">Tổng phát đúng, phân bổ VPO sai làm tính shortage trên system bị nhiễu.</p>
+                </div>
+            </div>
+            <h3 class="mb-4">Hệ thống vs Excel Lead Plan</h3>
+            <div class="comparison-panel mb-8">
+                <div class="comp-col system-side">
+                    <div class="comp-header">
+                        <i class="fa-solid fa-robot"></i> <span>Hệ thống hiện tại</span>
+                    </div>
+                    <ul>
+                        <li><i class="fa-solid fa-xmark text-danger"></i> Bám chặt BOM_TOLERANCE của CS (P1)</li>
+                        <li><i class="fa-solid fa-xmark text-danger"></i> Không gom BOM cho hàng tính chất PUBLIC (P2)</li>
+                        <li><i class="fa-solid fa-xmark text-danger"></i> Tin tuyệt đối số phát kho nhập tay hệ thống theo từng VPO (P3)</li>
+                    </ul>
+                </div>
+                <div class="comp-vs">VS</div>
+                <div class="comp-col excel-side">
+                    <div class="comp-header">
+                        <i class="fa-solid fa-file-excel"></i> <span>Lead Plan (Tư duy Vận hành)</span>
+                    </div>
+                    <ul>
+                        <li><i class="fa-solid fa-check text-success"></i> Buffer 10% cố định, dễ giải thích, an toàn</li>
+                        <li><i class="fa-solid fa-check text-success"></i> Gom shortage theo BOM, giảm trùng lặp, lãng phí CEILING</li>
+                        <li><i class="fa-solid fa-check text-success"></i> Nhìn tổng phát BOM, bỏ qua sai lệch phân bổ VPO</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="action-box gradient-border">
+                <div class="action-content">
+                    <div class="action-icon"><i class="fa-solid fa-bullseye"></i></div>
+                    <div>
+                        <strong>Giải pháp thay thế hoàn toàn Excel:</strong>
+                        <p>Thêm menu chọn tolerance, bổ sung chế độ gom PUBLIC theo cấp BOM (thay vì VPO), thêm cột đối chiếu Shortage BOM-level trung hòa thao tác kho.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="p1-tolerance" class="section-container animate-on-scroll">
+            <div class="section-header">
+                <h2><i class="fa-solid fa-scale-balanced"></i> 1. Nguyên nhân P1 – Sai khác về Tolerance</h2>
+                <div class="divider"></div>
+            </div>
+            <details class="tech-accordion mb-6" open>
+                <summary>1.1 & 1.2 Nguồn gốc & Cách hệ thống tính Demand <i class="fa-solid fa-chevron-down"></i></summary>
+                <div class="accordion-content">
+                    <div class="grid-2">
+                        <div>
+                            <h4>Luồng dữ liệu BOM_TOLERANCE:</h4>
+                            <div class="flow-steps">
+                                <div class="step">HQ Trung Quốc <span>(Định nghĩa tolerance chuẩn)</span></div>
+                                <div class="step">Khách hàng CS <span>(Gửi cho team ISC - P. Kế Xương)</span></div>
+                                <div class="step">Hệ thống M3 <span>(Nạp BOM_TOLERANCE)</span></div>
+                                <div class="step">SP_SPLIT_BATCH_GATE <span>(Đẩy sang Order Final)</span></div>
+                            </div>
+                            <p class="mt-4 text-muted"><strong>Đặc điểm:</strong> <code>BOM_TOLERANCE</code> thay đổi theo cặp <code>(VPO, BOM_UPDATE)</code>. Từ 3%, 5% đến cá biệt 20%.</p>
+                        </div>
+                        <div>
+                            <h4>Công thức SQL (Material_Demand_VIEW):</h4>
+                            <div class="code-mac">
+                                <div class="mac-header">
+                                    <span class="mac-btn red"></span><span class="mac-btn yellow"></span><span class="mac-btn green"></span>
+                                    <span class="mac-title">sql</span>
+                                </div>
+                                <pre><code>GROSS_DEMAND_COMPLETION =
+  (FINISHED_GOODS_ORDER_QTY - COMPLETION_QTY)
+  × BOM_CONSUMPTION
+  × <span class="code-highlight">(1 + BOM_TOLERANCE)</span>
+
+GROSS_DEMAND_ISSUANCE =
+  GREATEST(
+    0,
+    (ORDER_QTY × CONSUMPTION × <span class="code-highlight">(1 + TOLERANCE)</span>)
+    - CUMULATIVE_ISSUANCE
+  )</code></pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </details>
+            <h3 class="mb-4">1.3 Cách Lead Plan tính nhu cầu</h3>
+            <p class="mb-4">File Excel <strong>không dùng</strong> Tolerance từ CS mà áp dụng <strong>10% cố định</strong> cho đa số BOM theo quy ước nội bộ ISC.</p>
+            <div class="table-container mb-6 wrapper-border">
+                <table class="modern-table">
+                    <thead>
+                        <tr>
+                            <th>Tham số</th>
+                            <th>Hệ thống (CS/HQ)</th>
+                            <th>Lead Plan (Internal ISC)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Giá trị Tolerance</strong></td>
+                            <td><span class="tag tag-outline">Thay đổi (3%, 5%, 7%, 15%...)</span></td>
+                            <td><span class="tag tag-solid">10% Cố định</span></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Mức chi tiết</strong></td>
+                            <td>Theo từng cặp <code>(VPO, BOM)</code></td>
+                            <td>Theo <code>BOM</code> (ít thay đổi)</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Ngoại lệ</strong></td>
+                            <td>Có BOM lên tới 15 - 20%</td>
+                            <td>Một ít BOM đặc biệt dùng 20%</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="card info-card mb-6">
+                <h4><i class="fa-solid fa-calculator"></i> 1.4 Ví dụ minh họa: BOM <code>302014740</code> (VPO <code>V2512031C01</code>)</h4>
+                <div class="grid-2 mt-4">
+                    <div class="calc-box">
+                        <div class="calc-title system">Hệ thống (CS Tol = 3%)</div>
+                        <div class="formula"><code>(32) × 0.166667 × 1.03</code></div>
+                        <div class="result">≈ 5.49 đ.vị</div>
+                    </div>
+                    <div class="calc-box">
+                        <div class="calc-title excel">Lead Plan (ISC Tol = 10%)</div>
+                        <div class="formula"><code>(32) × 0.166667 × 1.10</code></div>
+                        <div class="result">≈ 5.87 đ.vị</div>
+                    </div>
+                </div>
+                <div class="alert alert-danger mt-4">
+                    <i class="fa-solid fa-arrow-trend-down"></i> Hệ thống tính thiếu hơn Lead Plan khoảng ~6.9% cho riêng BOM này. Tổng lệch toàn nhóm vật tư chì là <strong>~20.900 đ.vị khoảng (4%)</strong>.
+                </div>
+            </div>
+            <div class="takeaway-box mt-4">
+                <strong><i class="fa-solid fa-key"></i> Ý nghĩa & Kết luận P1:</strong> Tolerance CS mang tính kỹ thuật, còn 10% của ISC là an toàn vận hành. Hệ thống cần cho phép lựa chọn chuẩn tolerance theo yêu cầu nghiệp vụ thực tế.
+            </div>
+        </section>
+
+        <section id="p2-vpo-fragmentation" class="section-container animate-on-scroll">
+            <div class="section-header">
+                <h2><i class="fa-solid fa-cubes-stacked"></i> 2. Nguyên nhân P2 – Tính phân mảnh VPO</h2>
+                <div class="divider"></div>
+            </div>
+            <p class="mb-6">Hệ thống đánh giá shortage trên từng VPO, sau đó dùng hàm <code>CEILING</code> (so chuẩn MOQ/SPQ). Đối với các vật tư PUBLIC dùng rải rác, việc này kích hoạt hiệu ứng độn order nhiều lần.</p>
+            <h3 class="mb-4">2.2 So sánh Lãng phí SPQ (Ví dụ SPQ = 600)</h3>
+            <div class="grid-2 mb-8">
+                <div class="scenario-card negative">
+                    <div class="scenario-badge">Hiện tại (Từng VPO riêng lẻ)</div>
+                    <div class="scenario-content">
+                        <div class="item-row">
+                            <span>VPO1 Shortage (<span class="text-danger">14.3</span>) </span>
+                            <span class="math">CEILING(14.3, 600) = <strong class="text-danger">600</strong></span>
+                        </div>
+                        <div class="item-row">
+                            <span>VPO2 Shortage (<span class="text-danger">531.1</span>) </span>
+                            <span class="math">CEILING(531.1, 600) = <strong class="text-danger">600</strong></span>
+                        </div>
+                        <div class="total-row">
+                            <span>Tổng Đặt Mua:</span>
+                            <span class="total-val text-danger">1.200</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="scenario-card positive">
+                    <div class="scenario-badge">Đề xuất (Gom gộp theo BOM)</div>
+                    <div class="scenario-content">
+                        <div class="item-row">
+                            <span>Tổng Shortage (<span class="text-success">545.4</span>) </span>
+                            <span class="math">CEILING(545.4, 600) = <strong class="text-success">600</strong></span>
+                        </div>
+                        <div class="total-row">
+                            <span>Tổng Đặt Mua:</span>
+                            <span class="total-val text-success">600</span>
+                        </div>
+                        <div class="saving-chip"><i class="fa-solid fa-piggy-bank"></i> Giảm 50% khối lượng đặt rác SPQ</div>
+                    </div>
+                </div>
+            </div>
+            <h3 class="mb-4">2.4 Cấm gộp VPO - Cấu trúc Database Bằng Chứng Nháp (Ví dụ PUBLIC)</h3>
+            <div class="table-container wrapper-border">
+                <table class="modern-table">
+                    <thead>
+                        <tr>
+                            <th>DRAFT_PR_ID</th>
+                            <th>BOM_UPDATE</th>
+                            <th>VPOs (Gộp)</th>
+                            <th>TOTAL_SHORTAGE</th>
+                            <th>FINAL_ORDER_QTY</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="highlight-row">
+                            <td><span class="id-token">AGG_302023503</span></td>
+                            <td><strong>302023503</strong></td>
+                            <td>
+                                <div class="vpo-tags">
+                                    <span class="vpo-tag">V2601015C01</span>
+                                    <span class="vpo-tag">V2512007C06</span>
+                                </div>
+                            </td>
+                            <td><span class="font-mono">545.42</span></td>
+                            <td><span class="status-pill success">600</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section id="p3-warehouse" class="section-container animate-on-scroll">
+            <div class="section-header">
+                <h2><i class="fa-solid fa-warehouse"></i> 3. Nguyên nhân P3 – Thực tế Nhập liệu Kho</h2>
+                <div class="divider"></div>
+            </div>
+            <p class="mb-6">Kho phát hàng theo batch nhưng trên ứng dụng hạch toán, nhân viên kho thường lười phát và <strong>dồn dữ liệu xuất kho vào VPO đầu tiên nhìn thấy</strong>. Điều này làm rối ren phần tính toán Demand dựa vào Cumul Issuance.</p>
+            <div class="visual-flow mb-8">
+                <div class="warehouse-box">
+                    <i class="fa-solid fa-boxes-stacked"></i>
+                    <span>Tổng phát Batch ra xưởng: <strong>544 đ.vị</strong></span>
+                </div>
+                <div class="flow-arrows">
+                    <i class="fa-solid fa-arrow-right-long text-muted"></i>
+                </div>
+                <div class="system-boxes">
+                    <div class="sys-box error">
+                        <div class="sys-title">VPO 1 (Cần 14)</div>
+                        <div class="sys-val">Ghi sổ: 0</div>
+                        <div class="badge-status">Hệ thống: Thiếu</div>
+                    </div>
+                    <div class="sys-box warning">
+                        <div class="sys-title">VPO 2 (Cần 530)</div>
+                        <div class="sys-val">Ghi sổ: 544</div>
+                        <div class="badge-status">Hệ thống: Dư lố</div>
+                    </div>
+                </div>
+            </div>
+            <div class="takeaway-box alt">
+                <strong><i class="fa-solid fa-wand-magic-sparkles"></i> Magic Link:</strong> Gom nhóm BOM (Giải pháp P2) tự động "chữa cháy" cho lỗi này. Tổng phát BOM = 544, Tổng Cần = 544 -> Shortage = 0.
+            </div>
+        </section>
+
+        <section id="logic-validation" class="section-container animate-on-scroll">
+            <div class="section-header">
+                <h2><i class="fa-solid fa-laptop-code"></i> 4. Các Test Kiểm chứng Logic</h2>
+                <div class="divider"></div>
+            </div>
+            <p class="mb-6">Đã qua Script chạy BigQuery Report Part 2 & 3 để validate chứng lý.</p>
+            <div class="validation-grid">
+                <div class="val-card">
+                    <div class="val-icon"><i class="fa-solid fa-check-double text-success"></i> Nhóm A (P1 Validate)</div>
+                    <p>Định lượng khoảng chênh Tolerance là ~20.9K units trên data chì.</p>
+                </div>
+                <div class="val-card">
+                    <div class="val-icon"><i class="fa-solid fa-check-double text-success"></i> Nhóm B (P2 Validate)</div>
+                    <p>Tính chuẩn xác % tiết kiệm nếu Apply Aggregation BOM trên FULFILLMENT PUBLIC.</p>
+                </div>
+                <div class="val-card">
+                    <div class="val-icon"><i class="fa-solid fa-check-double text-success"></i> Nhóm C (P3 Validate)</div>
+                    <p>Bắt tận tay, day tận mặt các bản ghi "lười" phát của kho với Issue > Demand tỷ lệ mù.</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="solutions" class="section-container animate-on-scroll">
+            <div class="section-header">
+                <h2><i class="fa-solid fa-lightbulb"></i> 5. Các Mô-đun Giải pháp Mở rộng</h2>
+                <div class="divider"></div>
+            </div>
+            <div class="solutions-list">
+                <div class="solution-item">
+                    <div class="sol-icon"><i class="fa-solid fa-sliders"></i></div>
+                    <div class="sol-content">
+                        <h3>5.1 Menu Tolerance "Disconnect" (Fix P1)</h3>
+                        <p>Dựng Select Mode trên giao diện Assign_Sourcing UI trong 1 Session Mua hàng.</p>
+                        <div class="tags mt-2">
+                            <span class="tag tag-outline">CS Design BOM</span>
+                            <span class="tag tag-solid">ISC Default 10% Backup</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="solution-item">
+                    <div class="sol-icon"><i class="fa-solid fa-layer-group"></i></div>
+                    <div class="sol-content">
+                        <h3>5.2 FULFILLMENT_MODE BOM Aggregation (Fix P2)</h3>
+                        <p>View Mua hàng gộp dòng cho loại vật tư mang tính PUBLIC. Thay vì view 97 dòng VPO lẻ, giờ view chục BOM tổng.</p>
+                        <ul class="clean-list mt-2">
+                            <li><i class="fa-solid fa-check text-success"></i> Save lượng lớn vòng Order Cycle & Data Request_Date = MIN ngày giao.</li>
+                            <li><i class="fa-solid fa-check text-success"></i> Tracker Mua hàng với Metrics <b>TOTAL_MOQ_SAVINGS</b>.</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="solution-item">
+                    <div class="sol-icon"><i class="fa-solid fa-shield-halved"></i></div>
+                    <div class="sol-content">
+                        <h3>5.3 Warehouse Auto-Masking (Fix P3)</h3>
+                        <p>Cung cấp chỉ báo tin cậy <strong>BOM-Level Total Shortage</strong> chọc thẳng xuyên qua nhiễu Warehouse Error Data.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <div class="grid-2 gap-8">
+            <section id="guide" class="section-container animate-on-scroll mb-0">
+                <div class="section-header">
+                    <h2><i class="fa-solid fa-book-open"></i> 6. Sách Ngắn Chỉ Dẫn</h2>
+                    <div class="divider"></div>
+                </div>
+                <div class="timeline-guide">
+                    <div class="guide-item">
+                        <div class="guide-time">5 Phút</div>
+                        <div class="guide-text">
+                            <strong>Ban Lãnh Đạo Review</strong>
+                            <p>Đọc phần <b>0. Tóm tắt điều hành</b>.</p>
+                        </div>
+                    </div>
+                    <div class="guide-item action">
+                        <div class="guide-time"><i class="fa-solid fa-code"></i></div>
+                        <div class="guide-text">
+                            <strong>Tech Team Data</strong>
+                            <p>Map Markdown Report 1-2-3 làm Specs để Dev App Script UI Sourcing.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="conclusion" class="section-container animate-on-scroll mb-0">
+                <div class="section-header">
+                    <h2><i class="fa-solid fa-flag-checkered"></i> 7. Kết luận chung</h2>
+                    <div class="divider"></div>
+                </div>
+                <ul class="feature-list mb-6">
+                    <li>
+                        <div class="icon-circle"><i class="fa-solid fa-1"></i></div>
+                        <p>Hệ thống hiện tại <strong>đúng mặt Data Spec</strong> nhưng <strong>chưa hiểu tư duy mua hàng</strong> Lead Plan.</p>
+                    </li>
+                    <li>
+                        <div class="icon-circle"><i class="fa-solid fa-2"></i></div>
+                        <p>Ba yếu điểm lớn P1, P2, P3 đều có phương án triệt để khắc phục ở khâu Front-end.</p>
+                    </li>
+                    <li>
+                        <div class="icon-circle"><i class="fa-solid fa-3"></i></div>
+                        <p>Mở đường để tự tin <strong>Loại bỏ Lead Plan bằng Excel</strong>.</p>
+                    </li>
+                </ul>
+                <blockquote class="modern-quote">
+                    <strong>Tuyên ngôn số:</strong> Hệ thống mua hàng không cần "thắng" Excel vì đúng toán học trên mây, nó cần <strong>sao chép trải nghiệm Lead Plan</strong> và nâng cấp thành dạng Tự Động hoàn toàn.
+                </blockquote>
+            </section>
+        </div>
+
+        <footer class="footer mt-12">
+            <p>Báo cáo Nội bộ ISC Supply Chain | Tháng 03-2026 | BRS V2</p>
+        </footer>
+    </main>
+
+    <script>
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                document.querySelector(this.getAttribute('href')).scrollIntoView({ behavior: 'smooth' });
+            });
+        });
+
+        const sections = document.querySelectorAll('.section-container');
+        const navLinks = document.querySelectorAll('.nav-links a');
+
+        window.addEventListener('scroll', () => {
+            let current = '';
+            sections.forEach(section => {
+                const sectionTop = section.offsetTop;
+                if (scrollY >= (sectionTop - 150)) {
+                    current = section.getAttribute('id');
+                }
+            });
+
+            navLinks.forEach(link => {
+                link.classList.remove('active');
+                if (link.getAttribute('href').includes(current) && current !== '') {
+                    link.classList.add('active');
+                }
+            });
+            
+            document.querySelectorAll('.animate-on-scroll').forEach((el) => {
+                const rect = el.getBoundingClientRect();
+                if(rect.top < window.innerHeight - 50) {
+                    el.classList.add('is-visible');
+                }
+            });
+        });
+        
+        window.dispatchEvent(new Event('scroll'));
+    </script>
+</body>
+</html>

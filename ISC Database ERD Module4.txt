@@ -1,0 +1,372 @@
+erDiagram
+    direction LR
+    %% =========================================================
+    %% STYLING (Strict Match to M1/M2/M3)
+    %% =========================================================
+    classDef staging fill:#f8fff1,stroke:#7dd253,stroke-width:2px
+    classDef master fill:#ecf9ff,stroke:#51abff,stroke-width:2px
+    classDef log fill:#f1f5f9,stroke:#475569,stroke-width:2px
+    classDef input fill:#ffffff,stroke:#9562dc,stroke-width:2px,stroke-dasharray:3
+    classDef external fill:#fff4f3,stroke:#ff797b,stroke-width:3px,stroke-dasharray:5
+    classDef process_node fill:#e0e7ff,stroke:#4338ca,stroke-width:2px,stroke-dasharray:2
+    classDef view fill:#e0f2fe,stroke:#0284c7,stroke-width:2px,stroke-dasharray:5
+    classDef hub fill:#f1f5f9,stroke:#334155,stroke-width:4px
+
+    %% =========================================================
+    %% 📦 COMPONENT 1: THE MONDAY PROTOCOL (Inventory Reset)
+    %% Ref: Config_Schema [661-689]
+    %% =========================================================
+    
+    %% 1. Raw Layer (The Trash Bin)
+    Stock_Count_Upload {
+        string UPLOAD_ID PK "Auto-Generated UUID"
+        string UPLOAD_BATCH_ID "Critical: Last Batch Wins Logic (GROUP BY)"
+        string WAREHOUSE_ID "Audit Only: 152TL, etc."
+        
+        string RAW_BOM_UPDATE "User Input (Typos Allowed)"
+        string BOM_VIETNAMESE_DESCRIPTION "For Human Validation"
+        string INPUT_UNIT_CODE "Chiếc, Gross, Kg, Đôi, Túi, Cuộn, etc."
+        float RAW_QTY "As Scanned (Supports Decimal)"
+        
+        date EXTRACTED_SNAPSHOT_DATE "The Anchor for Stability Protocol"
+        
+        string UPLOADED_BY "UserEmail() (Accountability)"
+        timestamp UPLOADED_AT "System Timestamp of Upload"
+    }
+
+    %% 2. Staging Layer (The Aggregation)
+    Stock_Count_Staging {
+        string STAGING_ID PK "MD5(UPLOAD_BATCH_ID + BOM_UPDATE)"
+        string UPLOAD_BATCH_ID "Traceability to Source Batch"
+        string BOM_UPDATE FK "Resolved Item (Must exist in BOM_Data)"
+        string BOM_VIETNAMESE_DESCRIPTION "Denormalized for Readability"
+        
+        float TOTAL_COUNT_QTY "SUM(RAW_QTY) GROUP BY BOM_UPDATE"
+        date SNAPSHOT_DATE "Derived from UPLOADED_AT (The Monday Business Date)"
+    }
+
+    %% 3. The Variance Log (The Audit Trail)
+    Inventory_Variance_Log {
+        string VARIANCE_ID PK "VAR_ + MD5(BOM_UPDATE + SNAPSHOT_DATE)"
+        date SNAPSHOT_DATE "The Monday Date"
+        string BOM_UPDATE FK "Material Code"
+        
+        float IMPLIED_RECEIPTS "Calc: (Current - Last) + Consumption"
+        float PO_PROMISE_QTY "Sum of POs due last week"
+        float VARIANCE_GAP "Implied - Promise"
+        string VARIANCE_CATEGORY "NORMAL / LATE_DELIVERY / ZOMBIE_STOCK / TRUE_LOSS"
+        
+        timestamp LOGGED_AT "When Calculation Ran"
+    }
+
+    %% =========================================================
+    %% 🏛️ COMPONENT 2: THE TRUTH (Master Data)
+    %% Ref: Config_Schema [373-388]
+    %% =========================================================
+    
+    Stock_Data {
+        string STOCK_ID PK "STK_ + MD5(BOM_UPDATE + SNAPSHOT_DATE)"
+        string BOM_UPDATE FK "The Active Item (Specific Version)"
+        string BOM_VIETNAMESE_DESCRIPTION "Denormalized for Readability"
+        
+        float INVENTORY_QTY "The Hard Truth - Matches Stock_Count_Staging.TOTAL_COUNT_QTY"
+        date SNAPSHOT_DATE "The Monday Date (Business Date)"
+        
+        string FULFILLMENT_MODE "Derived: PUBLIC/PRIVATE (BOM_Data.MAIN_GROUP = 'Bao Bì' check)"
+        
+        string UPDATED_BY "MONDAY_PROTOCOL (System Actor)"
+        timestamp UPDATED_AT "Last Reset Timestamp"
+    }
+
+    %% =========================================================
+    %% 🚛 COMPONENT 3: LOGISTICS & FEEDBACK (The Bridge)
+    %% Ref: Config_Schema [692-789]
+    %% =========================================================
+    
+    %% 1. External Portal (Supplier Input)
+    UI_Supplier_Portal_VIEW {
+        string PO_LINE_ID PK "Hidden Key (For Sync)"
+        string FEEDBACK_BATCH_ID "Generated upon Sync (Placeholder)"
+        string PIC "Session Owner (For Portal Filter)"
+        
+        %% ZONE A: CONTEXT (Read-Only, System-Locked Daily)
+        string PO_NUMBER_REF "Context: PO-2025-001"
+        string SUPPLIER_NAME "Context: For Filtering"
+        string BOM_UPDATE "Context: Item Code"
+        string VPO "Context: Project Code"
+        string DATE_CODE "Context: Delivery Batch"
+        string FULFILLMENT_MODE "Context: PUBLIC/PRIVATE"
+        float ORDER_QTY "Context: How much we ordered"
+        date FINAL_REQUESTED_DELIVERY_DATE "Context: Our Target Date"
+        string PO_LINE_NOTE "Context: Buyer's Instruction"
+        
+        %% ZONE B: FEEDBACK (Pre-filled with Latest Values)
+        string CLOSURE_REASON "User Input: Dropdown (CUSTOMER_CANCELLED, SUPPLIER_DECLINED, etc.)"
+        float CONFIRMED_QTY "User Input: What supplier promises"
+        date AGREED_DELIVERY_DATE "User Input: Supplier's commitment"
+        date CURRENT_ETA "User Input: Logistics estimate"
+        float LOADED_QTY "User Input: What's on the boat"
+        date ACTUAL_ARRIVAL_DATE "User Input: Physical receipt date"
+        float ACTUAL_RECEIVED_QTY "User Input: What we got"
+        string SUPPLIER_FEEDBACK_NOTE "User Input: Free text reason"
+        
+        %% META (System Fields)
+        string STATUS "System Value: Current State"
+        string VALIDATION_STATUS "Placeholder: PASS/FAIL"
+        string UPDATED_BY "Last Actor"
+        timestamp UPDATED_AT "Last Modified"
+    }
+
+    %% 2. Feedback Log (Immutable History)
+    Supplier_Feedback_Log {
+        string FEEDBACK_LOG_ID PK "LOG_ + MD5(Batch + PO_LINE)"
+        string FEEDBACK_BATCH_ID "Traceability to Portal Sync"
+        
+        %% TARGET (Link to System)
+        string PO_LINE_ID FK "Validated Link to PO_Line_Tracking"
+        string PO_DOCUMENT_ID "Denormalized for Context"
+        string PO_NUMBER_REF "Denormalized for Readability"
+        string SUPPLIER_NAME "Denormalized for Readability"
+        string BOM_UPDATE "Material Code"
+        string VPO "Project Code"
+        string DATE_CODE "Delivery Batch Code"
+        string FULFILLMENT_MODE "PUBLIC/PRIVATE"
+        string PIC "Session Owner"
+        
+        %% THE INTENT (Critical for Executioner Logic)
+        string CLOSURE_REASON "Explicit Intent: CUSTOMER_CANCELLED, SUPPLIER_DECLINED, COMPLETED, etc."
+        
+        %% THE PAYLOAD (Clean Data)
+        float CONFIRMED_QTY "Vendor Promise"
+        float LOADED_QTY "What's on the boat"
+        float ACTUAL_RECEIVED_QTY "What we got"
+        date AGREED_DELIVERY_DATE "Vendor Commitment"
+        date CURRENT_ETA "Logistics Estimate"
+        date ACTUAL_ARRIVAL_DATE "Physical Receipt Date"
+        string SUPPLIER_FEEDBACK_NOTE "Vendor Comment"
+        
+        %% META (Audit Trail)
+        string FEEDBACK_STATUS "PENDING / APPLIED"
+        string UPDATED_BY "UserEmail() (Who Synced)"
+        timestamp UPDATED_AT "When Synced (UTC)"
+    }
+
+    %% 3. PO Tracking (The Live State - The Status Hub)
+    PO_Line_Tracking {
+        string PO_LINE_ID PK "Matches PO_Line.PO_LINE_ID"
+        string PO_DOCUMENT_ID FK "Header Link"
+        string BOM_UPDATE FK "Material Code (Matching Key)"
+        string FULFILLMENT_MODE "PUBLIC / PRIVATE (Filter Key)"
+        
+        string VPO "Project Traceability"
+        string PO_LINE_NOTE "Buyer's Instruction (External)"
+        string PIC "Session Owner (For Portal Filter)"
+        
+        %% QUANTITY WATERFALL (The Gradient)
+        float ORDER_QTY "Level 1: What we asked (Static from PO)"
+        float CONFIRMED_QTY "Level 2: What they promised (Dynamic)"
+        float LOADED_QTY "Level 3: What is on the boat (Dynamic)"
+        float ACTUAL_RECEIVED_QTY "Level 4: What we got (Dynamic)"
+        
+        %% TIME WATERFALL
+        date FINAL_REQUESTED_DELIVERY_DATE "COALESCE(BUYER_OVERRIDE, SYSTEM_SUGGESTED)"
+        date AGREED_DELIVERY_DATE "Supplier's Commitment (Dynamic)"
+        date CURRENT_ETA "Logistics Estimate (Dynamic)"
+        date ACTUAL_ARRIVAL_DATE "Physical Receipt Date (Dynamic)"
+        
+        %% CONTEXT (Supplier's Voice)
+        string SUPPLIER_FEEDBACK_NOTE "Latest Vendor Comment (Dynamic)"
+        
+        %% STATE MACHINE
+        string STATUS "ISSUED / CONFIRMED / DELAYED / IN_TRANSIT / ARRIVED / CANCELLED"
+        string CLOSURE_REASON "AUTO_JANITOR_OVERDUE / CUSTOMER_CANCELLED / SUPPLIER_DECLINED / COMPLETED"
+        boolean IS_ACTIVE "TRUE = Supply for M2. FALSE = Archived"
+        
+        string DATE_CODE "Delivery Batch Code"
+        timestamp INITIALIZED_AT "When PO was issued"
+        string UPDATED_BY "Last Actor"
+        timestamp UPDATED_AT "Last Modified"
+        timestamp LAST_SEEN_IN_SYNC "Orphan detection (ZXH AutoSync)"
+    }
+
+    %% =========================================================
+    %% 🔄 COMPONENT 4: ZXH PO AUTO SYNC (NEW)
+    %% Ref: Config_Schema [872-889]
+    %% =========================================================
+    ZXH_PO_AutoSync_Staging {
+        string GENERATED_PO_LINE_ID "ZXH_LINE_ prefix"
+        string GENERATED_PO_DOC_ID "ZXH_DOC_ prefix"
+        string INV "Invoice Reference"
+        string BOM_CODE "ZXH Material Code"
+        string PO_NUMBER_REF "ZXH PO Reference"
+        string SUPPLIER_NAME "ZXH Supplier"
+        
+        float GROSS_QTY "Order Quantity"
+        date REQUIRE_DATE "Required Delivery Date"
+        string REMARK "ZXH Notes"
+        string ZXH_STATUS "ZXH Status"
+        date ETA "Estimated Time of Arrival"
+        string PIC "Session Owner"
+        
+        timestamp UPLOADED_AT "Sync Timestamp"
+        string SESSION_ID "Sync Batch ID"
+    }
+
+    %% =========================================================
+    %% 📦 COMPONENT 5: ISSUANCE AUTO SYNC (NEW)
+    %% Ref: Config_Schema [896-942]
+    %% =========================================================
+    Material_Issuance {
+        string ISSUANCE_ID PK "ISU_ + MD5(BOM_UPDATE|VPO|SOURCE_ID)"
+        string BOM_UPDATE FK "Material key (joined to Material_Demand_VIEW)"
+        string VPO "Order reference"
+        
+        float CUMULATIVE_ISSUANCE_QTY "Total qty issued from warehouse"
+        date SNAPSHOT_DATE "When snapshot was captured"
+        
+        string SOURCE_BOM_CODE "Original warehouse BOM code (pre-mapping)"
+        string SYNC_BATCH_ID "Links to System_Execution_Log"
+        timestamp SYNCED_AT "When the sync ran"
+        
+        string SOURCE_ID "e.g. CHI_LEAD, PAINT"
+        string MAIN_GROUP "e.g. Chì, Sơn from BOM_Data"
+        string RESOLUTION_METHOD "EXACT or SHORTCODE"
+    }
+
+    Material_Issuance_Staging {
+        string ISSUANCE_ID "ISU_ + MD5"
+        string BOM_UPDATE
+        string VPO
+        float CUMULATIVE_ISSUANCE_QTY
+        date SNAPSHOT_DATE
+        string SOURCE_BOM_CODE
+        string SYNC_BATCH_ID
+        timestamp SYNCED_AT
+        string SOURCE_ID
+        string MAIN_GROUP
+        string RESOLUTION_METHOD
+    }
+
+    %% =========================================================
+    %% 🛠️ COMPONENT 6: SYSTEM LOG (Cross-Module)
+    %% Ref: Config_Schema [1043-1054]
+    %% =========================================================
+    System_Execution_Log {
+        string BATCH_ID "Run Identifier"
+        string MODULE_ID "Which Module"
+        integer STEP_ID "Step Sequence"
+        string STEP_NAME "Human-Readable Step"
+        string STATUS "Running / Success / Failed"
+        float DURATION_SEC "Execution Time"
+        string ERROR_MESSAGE "First Error"
+        timestamp LOGGED_AT "When Logged"
+    }
+
+    %% =========================================================
+    %% ⚙️ COMPONENT 7: PROCESS NODES (The Engines)
+    %% =========================================================
+    
+    SP_M4_FILTER {
+        string PROCESS_TYPE "Stored Procedure (Transform)"
+        string LOGIC_FLOW "1. Clean Slate (TRUNCATE Staging) | 2. Atomic Snapshot (Last Batch Wins) | 3. Aggregate by BOM_UPDATE | 4. Apply Monday Protocol (Date Logic)"
+        
+        string KEY_LOGIC_1 "ID Gen: MD5(UPLOAD_BATCH_ID + RAW_BOM_UPDATE)"
+        string KEY_LOGIC_2 "Date Logic: Uses EXTRACTED_SNAPSHOT_DATE (Stability Protocol)"
+        string KEY_LOGIC_3 "Last Batch: SELECT UPLOAD_BATCH_ID ORDER BY UPLOADED_AT DESC LIMIT 1"
+    }
+
+    SP_M4_VARIANCE_CALC {
+        string PROCESS_TYPE "Stored Procedure (Forensic Analysis)"
+        string LOGIC_FLOW "1. Calculate Implied Receipts | 2. Compare to PO Promises | 3. Categorize Variance | 4. Log Results"
+        
+        string KEY_LOGIC_1 "ID Gen: VAR_ + MD5(BOM_UPDATE + SNAPSHOT_DATE)"
+        string KEY_LOGIC_2 "Formula: (Current - Last) + Consumption vs Sum(PO_Promise)"
+        string KEY_LOGIC_3 "Categories: NORMAL / LATE_DELIVERY / ZOMBIE_STOCK / TRUE_LOSS"
+    }
+
+    SP_M4_APPLY_FEEDBACK {
+        string PROCESS_TYPE "Stored Procedure (State Update)"
+        string LOGIC_FLOW "1. Capture Latest PENDING Feedback | 2. Apply Waterfall Updates | 3. Execute Closure Logic | 4. Auto-Advance Status | 5. Mark Logs APPLIED"
+        
+        string EXECUTIONER_LOGIC "Priority 1: Explicit CLOSURE_REASON | Priority 2: Implicit (CONFIRMED_QTY = 0) -> SUPPLIER_DECLINED"
+        string WATERFALL_LOGIC "COALESCE(New_Value, Existing_Value) for each field"
+        string STATUS_AUTOMATION "IF ACTUAL_ARRIVAL -> ARRIVED | ELSE IF LOADED -> IN_TRANSIT | ELSE IF ETA > AGREED -> DELAYED | ELSE IF CONFIRMED -> CONFIRMED"
+    }
+
+    SP_M4_JANITOR {
+        string PROCESS_TYPE "Stored Procedure (Maintenance)"
+        string LOGIC_FLOW "1. Find Overdue POs | 2. Set STATUS = ASSUMED_RECEIVED | 3. Set IS_ACTIVE = FALSE | 4. Set CLOSURE_REASON = AUTO_JANITOR"
+        
+        string CRITERIA "COALESCE(ACTUAL_ARRIVAL, CURRENT_ETA, AGREED_DELIVERY, FINAL_REQUESTED) <= DATE_SUB(CURRENT_DATE, INTERVAL 7 DAY)"
+        string KEY_LOGIC "Matches Unified_Supply_Stack_VIEW Lazy User Filter Logic"
+    }
+
+    SP_M4_RESET_STOCK {
+        string PROCESS_TYPE "Stored Procedure (Destructive Reset)"
+        string LOGIC_FLOW "1. Wipe Stock_Data (TRUNCATE) | 2. Insert New Truth from Staging | 3. Derive Privacy Mode (BOM_Data.MAIN_GROUP check)"
+        
+        string KEY_LOGIC_1 "ID Gen: STK_ + MD5(BOM_UPDATE + SNAPSHOT_DATE)"
+        string KEY_LOGIC_2 "Privacy: IF LOWER(TRIM(MAIN_GROUP)) = 'bao bì' THEN PRIVATE ELSE PUBLIC"
+        string KEY_LOGIC_3 "Source: MONDAY_PROTOCOL (System Actor)"
+    }
+
+    SP_SYNC_ZXH_PO {
+        string PROCESS_TYPE "Stored Procedure (ZXH Auto Sync)"
+        string LOGIC_FLOW "1. Read Staging | 2. Resolve Suppliers | 3. Create/Update PO_Header | 4. Create/Update PO_Line | 5. Init/Update PO_Line_Tracking"
+        
+        string KEY_LOGIC_1 "PO_ORIGIN = ZXH_AUTO_SYNC"
+        string KEY_LOGIC_2 "ID Prefix: ZXH_DOC_ / ZXH_LINE_"
+        string KEY_LOGIC_3 "Orphan Detection: LAST_SEEN_IN_SYNC timestamp"
+    }
+
+    SP_M4_MERGE_ISSUANCE {
+        string PROCESS_TYPE "Stored Procedure (Issuance Merge)"
+        string LOGIC_FLOW "1. Validate Staging | 2. MERGE INTO Material_Issuance | 3. Cleanup Staging"
+        
+        string KEY_LOGIC_1 "ID Gen: ISU_ + MD5(BOM_UPDATE|VPO|SOURCE_ID)"
+        string KEY_LOGIC_2 "Resolution: EXACT match or SHORTCODE fallback"
+    }
+
+    %% =========================================================
+    %% RELATIONSHIPS
+    %% =========================================================
+    
+    %% PIPELINE A: THE MONDAY PROTOCOL (Synchronous Chain)
+    Stock_Count_Upload }|..|| SP_M4_FILTER : "1. triggers (Last Batch Wins)"
+    SP_M4_FILTER ||--|| Stock_Count_Staging : "2. transforms_into (N:1 Aggregation)"
+    
+    Stock_Count_Staging }|..|| SP_M4_VARIANCE_CALC : "3. triggers_analysis"
+    SP_M4_VARIANCE_CALC ||--|| Inventory_Variance_Log : "4a. logs_verdict (1:1)"
+    
+    SP_M4_VARIANCE_CALC }|..|| SP_M4_JANITOR : "4b. chains_next (Synchronous)"
+    SP_M4_JANITOR ||..|| PO_Line_Tracking : "5. kills_old_POs (UPDATE IS_ACTIVE)"
+    
+    SP_M4_JANITOR }|..|| SP_M4_RESET_STOCK : "6. chains_next (Synchronous)"
+    SP_M4_RESET_STOCK ||--|| Stock_Data : "7. resets_truth (TRUNCATE + INSERT)"
+    
+    %% PIPELINE B: SUPPLIER FEEDBACK LOOP
+    PO_Line_Tracking }|..|| UI_Supplier_Portal_VIEW : "feeds_context (1:1 Pre-fill)"
+    UI_Supplier_Portal_VIEW }|..|| Supplier_Feedback_Log : "syncs_to (N:N Batch)"
+    Supplier_Feedback_Log }|..|| SP_M4_APPLY_FEEDBACK : "triggers_update (PENDING status)"
+    SP_M4_APPLY_FEEDBACK ||..|| PO_Line_Tracking : "updates_state (Waterfall + Status)"
+    
+    %% PIPELINE C: ZXH PO AUTO SYNC (NEW)
+    ZXH_PO_AutoSync_Staging }|..|| SP_SYNC_ZXH_PO : "triggers (Nightly Sync)"
+    SP_SYNC_ZXH_PO ||..|| PO_Line_Tracking : "creates_or_updates (ZXH_AUTO_SYNC origin)"
+    
+    %% PIPELINE D: ISSUANCE AUTO SYNC (NEW)
+    Material_Issuance_Staging }|..|| SP_M4_MERGE_ISSUANCE : "triggers (CSV Upload)"
+    SP_M4_MERGE_ISSUANCE ||--|| Material_Issuance : "merges_issuance (UPSERT)"
+    
+    %% CROSS-MODULE VALIDATION
+    Inventory_Variance_Log }|..|| PO_Line_Tracking : "validates_closure (Forensic Link)"
+
+    %% =========================================================
+    %% CLASS ASSIGNMENTS
+    %% =========================================================
+    class Stock_Count_Staging,Material_Issuance_Staging,ZXH_PO_AutoSync_Staging staging
+    class Stock_Data,Material_Issuance master
+    class PO_Line_Tracking hub
+    class Inventory_Variance_Log,Supplier_Feedback_Log,System_Execution_Log log
+    class Stock_Count_Upload,UI_Supplier_Portal_VIEW input
+    class SP_M4_FILTER,SP_M4_VARIANCE_CALC,SP_M4_APPLY_FEEDBACK,SP_M4_JANITOR,SP_M4_RESET_STOCK,SP_SYNC_ZXH_PO,SP_M4_MERGE_ISSUANCE process_node

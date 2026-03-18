@@ -1,0 +1,496 @@
+erDiagram
+    direction LR
+    %% =========================================================
+    %% STYLING DEFINITIONS
+    %% =========================================================
+    classDef master fill:#ecf9ff,stroke:#51abff,stroke-width:2px
+    classDef staging fill:#f8fff1,stroke:#7dd253,stroke-width:2px
+    classDef document fill:#faf3ff,stroke:#9562dc,stroke-width:2px
+    classDef event fill:#fffcec,stroke:#fbc14e,stroke-width:2px
+    classDef view fill:#e0f2fe,stroke:#0284c7,stroke-width:2px,stroke-dasharray:5
+    classDef input fill:#ffffff,stroke:#9562dc,stroke-width:2px,stroke-dasharray:3
+    classDef process_node fill:#e0e7ff,stroke:#4338ca,stroke-width:2px,stroke-dasharray:2
+    classDef log fill:#f1f5f9,stroke:#475569,stroke-width:2px
+
+    %% =========================================================
+    %% 📘 LAYER 1: MASTER DATA (Blue)
+    %% Ref: Config_Schema [79-95]
+    %% =========================================================
+    BOM_Data {
+        string BOM_UPDATE PK "The stable, official material ID"
+        string BOM "The Generic Code (Family Parent)"
+        string PIC "Data Steward"
+        string MAIN_GROUP "Critical: Privacy Mode Logic"
+        string SUB_GROUP
+        string BOM_DESCRIPTION
+        string BOM_VIETNAMESE_DESCRIPTION
+        string BOM_UNIT "UOM (e.g. kg, meter, chiếc)"
+        string BOM_STATUS "ACTIVE / PENDING_DEFINITION"
+        
+        string UPDATED_BY "Last System User"
+        timestamp UPDATED_AT "Last Modified Timestamp"
+    }
+
+    %% =========================================================
+    %% ⚪ INPUT LAYER (GSheet Source - Transient)
+    %% Ref: Config_Schema [97-137]
+    %% =========================================================
+    Production_Order_Draft {
+        string PRODUCTION_ORDER_ID PK
+        string CUSTOMER
+        string VPO "Internal Business Key"
+        string PO "Customer Reference PO"
+        string SKU_NAME_VERSION
+        string SKU_CODE
+        string SKU_DESCRIPTION
+        string SKU_UNIT
+        
+        %% ALL STRINGS (Robust Ingestion Pattern)
+        string RECEIVED_VPO_DATE "Date Order Received"
+        string FINISHED_GOODS_ORDER_QTY
+        string REQUEST_FACTORY_FINISHED_DATE "Critical: Becomes REQUESTED_DELIVERY_DATE"
+        string EX_FACTORY_DATE
+        string EXPECTED_TIME_OF_DEPARTURE
+        string WORK_IN_PROCESS_START_DATE "Critical: WIP_START - 7 Days = Demand Date"
+        string PACKAGE_START_DATE "Kitting Date"
+        string FINISHED_DATE
+        
+        string DATA_STATE "PROCESSING / PENDING_MASTER / PARTIALLY_RELEASED / RELEASED"
+        string COMPLETION_QTY "Actual Production Output"
+        string COMPLETION_PERCENT "Factory Progress 0% -> 100%"
+        string COUNTRY
+    }
+
+    BOM_Order_List_Draft {
+        string PRODUCTION_ORDER_ID FK "Link to Header"
+        string BOM "Generic Material Code (May not exist in Master)"
+        string BOM_CONSUMPTION "Variable: Recipe Factor"
+        string BOM_TOLERANCE "Variable: Safety Buffer %"
+        string BOM_UPDATE "User Edit: Specific Version (Defaults to BOM if empty)"
+        string ORDER_LIST_NOTE "User Edit: Strategy Context (Internal Only)"
+    }
+
+    %% =========================================================
+    %% 🟢 LAYER 2: STAGING (Green - The Queue)
+    %% Ref: Config_Schema [139-175]
+    %% =========================================================
+    BOM_Order_List_Staging {
+        string STAGING_ID PK "MD5(PRODUCTION_ORDER_ID + BOM) - Deterministic"
+        string PRODUCTION_ORDER_ID FK
+        string BOM "For validation context"
+        string BOM_UPDATE "The Specific Item (May be invalid)"
+        
+        float BOM_CONSUMPTION "Parsed from string"
+        float BOM_TOLERANCE "Parsed from string"
+        string ORDER_LIST_NOTE "Strategy Note"
+        
+        string IS_NEW_ITEM "TRUE if BOM_UPDATE not in BOM_Data"
+        string UPLOAD_BATCH_ID "Trace to upload event"
+        timestamp UPLOADED_AT "System timestamp"
+        
+        string VALIDATION_STATUS "PASS / FAIL / PASS_RETROACTIVE"
+        string ERROR_MESSAGE "Failure reason"
+    }
+
+    BOM_Data_Staging {
+        string BOM_UPDATE PK "The New ID to be created"
+        string BOM "The Parent Family"
+        string PIC "Suggested Owner"
+        string MAIN_GROUP "Suggested Category"
+        string SUB_GROUP "Suggested Subcategory"
+        string BOM_DESCRIPTION "User fills"
+        string BOM_VIETNAMESE_DESCRIPTION "User fills"
+        string BOM_UNIT "Suggested UOM"
+        string BOM_STATUS "PENDING_DEFINITION (Initial State)"
+        
+        string SOURCE "AUTO_SKELETON (System Generated)"
+        timestamp INGESTED_AT "When skeleton was created"
+    }
+
+    %% =========================================================
+    %% 🟣 DOCUMENT LAYER (Purple - The Truth)
+    %% Ref: Config_Schema [177-242]
+    %% =========================================================
+    Production_Order {
+        string PRODUCTION_ORDER_ID PK
+        string CUSTOMER
+        string VPO "Internal Business Key (Source of Traceability)"
+        string PO "Customer Reference PO"
+        string SKU_NAME_VERSION
+        string SKU_CODE
+        string SKU_DESCRIPTION
+        string SKU_UNIT
+        
+        %% STRICT DATE TYPES (Business Days Only)
+        date RECEIVED_VPO_DATE "Date Order Received"
+        float FINISHED_GOODS_ORDER_QTY "Parsed quantity"
+        date REQUEST_FACTORY_FINISHED_DATE "Primary: Becomes Demand.REQUESTED_DELIVERY_DATE"
+        date EX_FACTORY_DATE
+        date EXPECTED_TIME_OF_DEPARTURE
+        date WORK_IN_PROCESS_START_DATE "Critical: WIP_START - 7 Days = Material Demand Date"
+        date PACKAGE_START_DATE "Kitting Date"
+        date FINISHED_DATE
+        
+        string DATA_STATE "PROCESSING / PARTIALLY_RELEASED / RELEASED / CANCELLED / COMPLETED"
+        float COMPLETION_QTY "Actual Production Output"
+        float COMPLETION_PERCENT "Progress 0.0 -> 1.0"
+        string COUNTRY
+        
+        %% CANCELLATION PROTOCOL (NEW)
+        float FORCE_CLOSE_QTY "Final Truth qty for cancelled orders"
+        string CANCELLATION_REASON "Why it was killed (Enum)"
+        string CANCELLED_BY "Who killed it"
+        timestamp CANCELLED_AT "When it died"
+        
+        string UPDATED_BY "Last System User"
+        timestamp UPDATED_AT "Last Modified"
+        timestamp VALID_FROM_TS "SCD2 Start"
+        timestamp VALID_TO_TS "SCD2 End (NULL = Active)"
+    }
+
+    BOM_Order_List_Final {
+        string BOM_ORDER_LIST_FINAL_ID PK "DEM_ + MD5(PRODUCTION_ORDER_ID + BOM)"
+        string PRODUCTION_ORDER_ID FK "Parent Header Link"
+        string BOM_UPDATE FK "Validated Material ID (FK to BOM_Data)"
+        
+        float BOM_CONSUMPTION "Recipe Factor"
+        float BOM_TOLERANCE "Safety Buffer (0.05 = 5%)"
+        string FULFILLMENT_MODE "Derived: PRIVATE if MAIN_GROUP='Bao Bì', else PUBLIC"
+        string ORDER_LIST_NOTE "Strategy Note (Passed to M2/M3)"
+        
+        string UPDATED_BY "Last System User"
+        timestamp UPDATED_AT "Last Modified"
+        timestamp VALID_FROM_TS "SCD2 Start"
+        timestamp VALID_TO_TS "SCD2 End (NULL = Active)"
+    }
+
+    %% =========================================================
+    %% 🟡 VIEW LAYER (The Lenses)
+    %% Ref: SQL_Vault [344-371, 515-609, 629-688, 696-745, 749+]
+    %% =========================================================
+    
+    View_Skeleton_Feed {
+        string BOM_UPDATE PK "The Missing Item"
+        string BOM "Family Parent"
+        string PIC "ANY_VALUE(PIC) from Family Template"
+        string MAIN_GROUP "ANY_VALUE(MAIN_GROUP) from Family Template"
+        string SUB_GROUP "ANY_VALUE(SUB_GROUP) from Family Template"
+        string BOM_UNIT "ANY_VALUE(BOM_UNIT) from Family Template"
+        string SOURCE "AUTO_SKELETON (Filter Criteria)"
+        string BOM_DESCRIPTION "NULL (User must fill)"
+        string BOM_VIETNAMESE_DESCRIPTION "NULL (User must fill)"
+    }
+
+    Material_Demand_VIEW {
+        string DEMAND_ID "BOM_ORDER_LIST_FINAL_ID (Inherited PK)"
+        string PRODUCTION_ORDER_ID FK "Header Link"
+        string BOM_UPDATE FK "Material Code"
+        string FULFILLMENT_MODE "PUBLIC / PRIVATE"
+        
+        string VPO "Project Code (NULL allowed - becomes GENERAL_STOCK in M2)"
+        string ORDER_LIST_NOTE "Strategy Note (Internal Context)"
+        string SKU_CODE "Denormalized for readability"
+        
+        date REQUESTED_DELIVERY_DATE "WIP_START - 7 Days (Primary Sort)"
+        date RECEIVED_VPO_DATE "Secondary FIFO Tiebreaker"
+        
+        %% CLASSIFICATION (From BOM_Data JOIN)
+        string MAIN_GROUP "Classification from BOM_Data"
+        string SUB_GROUP "Classification from BOM_Data"
+        string PIC "Material Owner from BOM_Data"
+        
+        %% DUAL-METHOD DEMAND (Phase 1)
+        float SHORTAGE_COMPLETION "Method 1: (Ordered-Built) * Consumption * (1+Tolerance)"
+        float SHORTAGE_ISSUANCE "Method 2: Full_MRP_Qty - Already_Issued_Qty"
+        float GROSS_DEMAND_QTY "Active Column (Currently = SHORTAGE_COMPLETION)"
+        
+        %% SYSTEM FLAGS
+        boolean HAS_ISSUANCE_DATA "TRUE when Material_Issuance has record"
+        string CALC_METHOD_USED "COMPLETION or ISSUANCE"
+        
+        timestamp CALCULATED_AT "View Evaluation Time"
+    }
+
+    Material_Demand_SNAPSHOT {
+        string DEMAND_ID PK "Copy of View DEMAND_ID"
+        string PRODUCTION_ORDER_ID FK "Frozen Header Link"
+        string BOM_UPDATE FK "Frozen Material Code"
+        string FULFILLMENT_MODE "Frozen Mode"
+        
+        string VPO "Frozen Project Code (NULL preserved)"
+        string ORDER_LIST_NOTE "Frozen Strategy Note"
+        string SKU_CODE "Frozen Context"
+        
+        date REQUESTED_DELIVERY_DATE "Frozen Target Date"
+        date RECEIVED_VPO_DATE "Frozen FIFO Tiebreaker"
+        
+        %% FROZEN CLASSIFICATION
+        string MAIN_GROUP "Frozen Classification"
+        string SUB_GROUP "Frozen Classification"
+        string PIC "Frozen Material Owner"
+        
+        %% FROZEN DUAL-METHOD DEMAND
+        float SHORTAGE_COMPLETION "Frozen Method 1"
+        float SHORTAGE_ISSUANCE "Frozen Method 2"
+        float GROSS_DEMAND_QTY "Frozen Active Demand"
+        
+        %% FROZEN FLAGS
+        boolean HAS_ISSUANCE_DATA "Frozen Issuance Flag"
+        string CALC_METHOD_USED "Frozen Calc Method"
+        
+        timestamp CALCULATED_AT "When Snapshot was Taken"
+    }
+
+    Closed_Order_Ghost_VIEW {
+        string VPO "Project Code (Grouping Key)"
+        float GHOST_QUANTITY "SUM(COMPLETION_QTY) from Completed/Cancelled"
+        integer CLOSED_ORDER_COUNT "Count of closed orders"
+        timestamp LAST_CLOSED_AT "Most recent closure"
+    }
+
+    Production_Status_Portal_VIEW {
+        string PRODUCTION_ORDER_ID PK "Active Order Key"
+        string VPO "Project Code"
+        string CUSTOMER
+        string SKU_NAME_VERSION
+        string SKU_CODE
+        float FINISHED_GOODS_ORDER_QTY "Order Target"
+        float CURRENT_COMPLETION_QTY "COALESCE(COMPLETION_QTY, 0)"
+        float CURRENT_PERCENT "ROUND(COMPLETION_PERCENT * 100, 1)"
+        date FFD "REQUEST_FACTORY_FINISHED_DATE"
+        date EX_FACTORY_DATE
+        string DATA_STATE "Active states only"
+        string STATUS_NOTE "Visual status for user"
+        float GHOST_CONTEXT "Previously closed VPO qty"
+        timestamp LAST_SYSTEM_UPDATE "UPDATED_AT"
+    }
+
+    Cancelled_Orders_Alert_VIEW {
+        string PRODUCTION_ORDER_ID PK "Cancelled Order"
+        string VPO
+        string CUSTOMER
+        string SKU_NAME_VERSION
+        float ORIGINAL_ORDER_QTY
+        float FINAL_COMPLETION_QTY "FORCE_CLOSE_QTY"
+        float PERCENT_AT_CANCEL
+        string CANCELLATION_REASON
+        string CANCELLED_BY
+        timestamp CANCELLED_AT
+        integer HOURS_SINCE_CANCEL
+        integer ORPHANED_PR_COUNT "Open PRs for this VPO"
+        integer ACTIVE_PO_LINES_COUNT "Active PO Lines for this VPO"
+        integer PRIVATE_PO_LINES_COUNT "Private PO Lines (High Risk)"
+    }
+
+    %% =========================================================
+    %% 📜 LOG LAYER (Grey - Audit Trails)
+    %% Ref: Config_Schema [249-367]
+    %% =========================================================
+
+    Production_Status_Log {
+        string LOG_ID PK
+        string PRODUCTION_ORDER_ID "For Manual Portal"
+        string VPO "For Digital Bridge"
+        
+        float FINISHED_GOODS_ORDER_QTY "Target Context"
+        float NEW_CUMULATIVE_QTY "Lifetime Cumulative"
+        float EXPECTED_OLD_QTY "Optimistic Locking"
+        
+        string SOURCE "MANUAL_PORTAL or AUTO_BRIDGE"
+        string VALIDATION_STATUS "PENDING / COMMITTED / ERROR"
+        string ERROR_MESSAGE
+        
+        float GHOST_DEDUCTION_APPLIED "Ghost Logic Audit"
+        float EFFECTIVE_QTY_FOR_FIFO "Net qty after Ghost"
+        
+        timestamp LOGGED_AT
+        string LOGGED_BY
+        timestamp PROCESSED_AT
+    }
+
+    CS_Status_Discrepancy_Log {
+        string ALERT_ID PK "ALERT_{VPO}_{TYPE}"
+        string VPO
+        string PRODUCTION_ORDER_ID
+        
+        string ALERT_TYPE "ZOMBIE / DROP / QTY_MISMATCH / ..."
+        string CLASSIFICATION "STATE_MISMATCH / ORDER_SPEC / SAFETY_FLAG"
+        boolean IS_MULTI_ORDER "True if VPO has >1 active order"
+        integer ORDER_COUNT
+        integer CS_ROW_COUNT
+        
+        timestamp FIRST_DETECTED_AT
+        timestamp LAST_DETECTED_AT
+        
+        string CS_STATUS
+        float CS_ACTUAL_QTY
+        float CS_ORDER_QTY
+        date CS_CONFIRMED_FFD
+        string CS_ID_REFS
+        
+        string SYS_DATA_STATE
+        float SYS_COMPLETION_QTY
+        float SYS_ORDER_QTY
+        date SYS_REQ_FFD
+        
+        integer DAYS_UNRESOLVED
+        integer ESCALATION_LEVEL "0, 1, 2"
+        timestamp ESCALATION_NOTIFIED_AT
+        
+        boolean IS_RESOLVED
+        timestamp RESOLVED_AT
+        string RESOLVED_BY
+        string RESOLUTION_TYPE
+        string RESOLUTION_NOTE
+        
+        string LOG_SOURCE
+        timestamp CREATED_AT
+        timestamp UPDATED_AT
+    }
+
+    CS_Resolution_Staging {
+        string RESOLUTION_ID PK "RES_ + MD5(ALERT_ID + TARGET_QTY + TARGET_FFD + DATE)"
+        string ALERT_ID FK "Link to Discrepancy"
+        string VPO
+        string PRODUCTION_ORDER_ID
+        
+        float TARGET_ORDER_QTY "New Qty (If Planner overrides)"
+        date TARGET_FFD "New Date (If Planner overrides)"
+        
+        string RESOLUTION_NOTE "Planner context"
+        string RESOLVED_BY "Email"
+        boolean IS_MULTI_ORDER "Safety Flag for SP"
+        
+        string VALIDATION_STATUS "PENDING / PROCESSED / ERROR"
+        string ERROR_MESSAGE
+        string RESOLUTION_SOURCE
+        
+        timestamp CREATED_AT
+        timestamp PROCESSED_AT
+    }
+
+    %% =========================================================
+    %% ⚙️ PROCESS LAYER (The Logic Engines)
+    %% Ref: SQL_Vault [137-509, 623+]
+    %% =========================================================
+    SP_SPLIT_BATCH_GATE {
+        string PROCESS_TYPE "Stored Procedure (Transaction-Safe)"
+        string LOGIC_FLOW "1. Expire Old | 2. Promote Valid | 3. Create Skeletons | 4. Update Status"
+        
+        string BLOCK_A "SCD2 Header Update (Production_Order) + Safe Merge Protocol"
+        string BLOCK_B "SCD2 Line Processing (BOM_Order_List_Final)"
+        string BLOCK_C "Status Re-Evaluation (DATA_STATE Logic)"
+        string BLOCK_D "Cleanup (Truncate Draft Tables)"
+        
+        string KEY_LOGIC_1 "ID Gen: DEM_ + MD5(PO_ID + BOM)"
+        string KEY_LOGIC_2 "Privacy: IF MAIN_GROUP='Bao Bì' THEN PRIVATE"
+        string KEY_LOGIC_3 "Skeleton: INSERT INTO BOM_Data_Staging WHERE FAIL"
+        string KEY_LOGIC_4 "Safe Merge: Life Raft for COMPLETION_QTY preservation"
+    }
+
+    SP_M1_MASTER_MERGE {
+        string PROCESS_TYPE "Stored Procedure (SCD1 Upsert)"
+        string LOGIC_FLOW "1. Heal Master | 2. Resurrect Items | 3. Flip Status | 4. Cleanup"
+        
+        string PART_1 "MERGE BOM_Data (Deduplicate by INGESTED_AT)"
+        string PART_2 "Find FAIL->PASS Items and Promote to Final"
+        string PART_3 "Update Production_Order.DATA_STATE"
+        string PART_4 "Cleanup: TRUNCATE BOM_Data_Staging"
+    }
+
+    SP_M1_CS_STATUS_SYNC {
+        string PROCESS_TYPE "Stored Procedure (Discrepancy Detection)"
+        string LOGIC_FLOW "1. Compare CS vs System | 2. Detect Discrepancies | 3. Log Alerts"
+        
+        string KEY_LOGIC "Detects ZOMBIE, DROP, QTY_MISMATCH across CS and System snapshots"
+    }
+
+    SP_M1_APPLY_RESOLUTION {
+        string PROCESS_TYPE "Stored Procedure (Resolution Merge)"
+        string LOGIC_FLOW "1. Validate Resolution | 2. Apply to Production_Order | 3. Update Alert"
+        
+        string KEY_LOGIC "Applies TARGET_ORDER_QTY and TARGET_FFD from CS_Resolution_Staging"
+    }
+
+    SP_M1_COMMIT_STATUS_LOG {
+        string PROCESS_TYPE "Stored Procedure (Production Status)"
+        string LOGIC_FLOW "1. Validate Log Entry | 2. Apply FIFO with Ghost Deduction | 3. Update Order"
+        
+        string KEY_LOGIC "Ghost Logic: Deducts completed qty from closed orders in same VPO"
+    }
+
+    SP_M1_PSP_AUTO_BRIDGE {
+        string PROCESS_TYPE "Stored Procedure (Auto-Sync)"
+        string LOGIC_FLOW "1. Read External PSP Source | 2. Map to Production_Order | 3. Commit Status"
+        
+        string KEY_LOGIC "Digital Bridge: External factory progress -> Production_Status_Log"
+    }
+
+    %% =========================================================
+    %% RELATIONSHIPS
+    %% =========================================================
+    
+    %% Input Flow
+    Production_Order_Draft ||--|{ BOM_Order_List_Draft : "contains (1:N)"
+    Production_Order_Draft }|..|| Production_Order : "promotes_to (SCD2 Versioning)"
+    BOM_Order_List_Draft ||..|| BOM_Order_List_Staging : "uploads_to (1:1 Transform)"
+    
+    %% The Split Gate Decision
+    BOM_Order_List_Staging }|..|| SP_SPLIT_BATCH_GATE : "triggers (Batch Upload Event)"
+    
+    %% Success Path
+    SP_SPLIT_BATCH_GATE ||--|| BOM_Order_List_Final : "PASS: promotes_valid (Generates DEM_ ID)"
+    
+    %% Failure Path (Skeleton Creation)
+    SP_SPLIT_BATCH_GATE }|..|| BOM_Data_Staging : "FAIL: creates_skeleton (AUTO_SKELETON)"
+    
+    %% Self-Healing Loop
+    BOM_Data_Staging }|..|| View_Skeleton_Feed : "feeds_ui (Family Template Join)"
+    View_Skeleton_Feed }|..|| SP_M1_MASTER_MERGE : "user_edits_trigger (Batch Hydration)"
+    SP_M1_MASTER_MERGE ||--|| BOM_Data : "heals_master (MERGE Upsert)"
+    
+    %% Resurrection Flow
+    BOM_Data }|..|| SP_M1_MASTER_MERGE : "enables_resurrection (Retroactive PASS)"
+    SP_M1_MASTER_MERGE }|..|| BOM_Order_List_Final : "resurrects_items (FAIL -> PASS_RETROACTIVE)"
+    
+    %% Core Business Logic
+    Production_Order ||--|{ BOM_Order_List_Final : "owns_details (1:N Active Lines)"
+    BOM_Data ||--o{ BOM_Order_List_Final : "validates (FK Check + Privacy Logic)"
+    
+    %% View Projection (Updated: Dual-Method Demand)
+    BOM_Order_List_Final ||..|{ Material_Demand_VIEW : "projects_demand (Live Calculation)"
+    Production_Order ||..|{ Material_Demand_VIEW : "provides_context (Header Data)"
+    BOM_Data ||..|{ Material_Demand_VIEW : "provides_classification (MAIN_GROUP, SUB_GROUP, PIC)"
+    
+    %% The Freeze (M1->M2 Bridge)
+    Material_Demand_VIEW }|..|| Material_Demand_SNAPSHOT : "freezes_nightly (TRUNCATE + INSERT)"
+    
+    %% Ghost Calculator & Portal Views
+    Production_Order ||..|{ Closed_Order_Ghost_VIEW : "feeds (Completed/Cancelled Orders)"
+    Production_Order ||..|{ Production_Status_Portal_VIEW : "feeds (Active Orders Only)"
+    Production_Order ||..|{ Cancelled_Orders_Alert_VIEW : "feeds (Cancelled Orders)"
+    
+    %% Production Status Protocol
+    Production_Status_Log }|..|| SP_M1_COMMIT_STATUS_LOG : "triggers (Manual or Auto)"
+    SP_M1_COMMIT_STATUS_LOG ||..|| Production_Order : "updates_completion (FIFO + Ghost)"
+    Closed_Order_Ghost_VIEW }|..|| SP_M1_COMMIT_STATUS_LOG : "provides_ghost_qty (Deduction)"
+    
+    %% PSP AutoSync Flow
+    SP_M1_PSP_AUTO_BRIDGE }|..|| Production_Status_Log : "creates_entries (AUTO_BRIDGE)"
+
+    %% CS Status Protocol
+    SP_M1_CS_STATUS_SYNC ||--|{ CS_Status_Discrepancy_Log : "creates_alerts (Discrepancies)"
+    CS_Resolution_Staging }|..|| SP_M1_APPLY_RESOLUTION : "triggers (Planner Decision)"
+    SP_M1_APPLY_RESOLUTION ||..|| Production_Order : "applies_fix (Qty/Date Override)"
+    SP_M1_APPLY_RESOLUTION ||..|| CS_Status_Discrepancy_Log : "resolves_alert (IS_RESOLVED)"
+
+    %% =========================================================
+    %% CLASS ASSIGNMENTS
+    %% =========================================================
+    class BOM_Data master
+    class BOM_Data_Staging,BOM_Order_List_Staging,Material_Demand_SNAPSHOT,CS_Resolution_Staging staging
+    class Production_Order,BOM_Order_List_Final document
+    class BOM_Order_List_Draft,Production_Order_Draft input
+    class Material_Demand_VIEW,View_Skeleton_Feed,Closed_Order_Ghost_VIEW,Production_Status_Portal_VIEW,Cancelled_Orders_Alert_VIEW view
+    class Production_Status_Log,CS_Status_Discrepancy_Log log
+    class SP_SPLIT_BATCH_GATE,SP_M1_MASTER_MERGE,SP_M1_CS_STATUS_SYNC,SP_M1_APPLY_RESOLUTION,SP_M1_COMMIT_STATUS_LOG,SP_M1_PSP_AUTO_BRIDGE process_node

@@ -1,0 +1,460 @@
+erDiagram
+    direction LR
+    %% =========================================================
+    %% STYLING (Strict Match to M1/M2)
+    %% =========================================================
+    classDef master fill:#ecf9ff,stroke:#51abff,stroke-width:2px
+    classDef staging fill:#f8fff1,stroke:#7dd253,stroke-width:2px
+    classDef document fill:#faf3ff,stroke:#9562dc,stroke-width:2px
+    classDef draft fill:#ffffff,stroke:#e11d48,stroke-width:2px,stroke-dasharray:5
+    classDef event fill:#fffcec,stroke:#fbc14e,stroke-width:2px
+    classDef log fill:#f1f5f9,stroke:#475569,stroke-width:2px
+    classDef junction fill:#fef3c7,stroke:#f59e0b,stroke-width:2px
+    classDef process_node fill:#e0e7ff,stroke:#4338ca,stroke-width:2px,stroke-dasharray:2
+    classDef view fill:#e0f2fe,stroke:#0284c7,stroke-width:2px,stroke-dasharray:5
+    classDef input fill:#ffffff,stroke:#9562dc,stroke-width:2px,stroke-dasharray:3
+
+    %% =========================================================
+    %% 🥘 PIPELINE A: MASTER DATA MANAGEMENT (Top Lane)
+    %% Ref: Config_Schema [432-515]
+    %% =========================================================
+    
+    %% 1. Master Layer (The Clean Data)
+    Supplier_Information {
+        string SUPPLIER_ID PK "Hash(SUPPLIER_NAME + TAX_ID)"
+        string SUPPLIER_NAME
+        string SUPPLIER_LOCATION_TYPE "Import / Local"
+        string ADDRESS
+        string PRIMARY_CONTACT_NAME
+        string PRIMARY_CONTACT_TITLE
+        string MOBILE
+        string LANDPHONE
+        string TAX_ID
+        string BANK_NAME
+        string BANK_ACCOUNT_NUMBER
+        string CONTRACT_ID
+        date CONTRACT_DATE "Legal Contract Start"
+        date CONTRACT_EXPIRATION_DATE "Legal Contract End"
+        string PAYMENT_TERMS "e.g., NET30, NET60"
+        string SUPPLIER_STATUS "ACTIVE / INACTIVE"
+        
+        string UPDATED_BY "Last System User"
+        timestamp UPDATED_AT "Last Modified"
+    }
+
+    Supplier_Capacity {
+        string CAPACITY_ID PK "MD5(SUPPLIER_ID + BOM_UPDATE)"
+        string SUPPLIER_ID FK "Link to Supplier_Information"
+        string SUPPLIER_NAME "Denormalized for readability"
+        string BOM_UPDATE FK "Link to BOM_Data"
+        
+        float LEAD_TIME "Days (e.g., 30.0)"
+        float UNIT_PRICE "Verified Price"
+        float MOQ "Minimum Order Quantity"
+        
+        string UPDATED_BY "Last System User"
+        timestamp UPDATED_AT "Last Modified"
+    }
+
+    %% 2. Staging Layer (The Dirty Data - Full Mirror)
+    Supplier_Information_Staging {
+        string SUPPLIER_ID PK "Hash(NAME + TAX_ID)"
+        string SUPPLIER_NAME
+        string SUPPLIER_LOCATION_TYPE
+        string ADDRESS
+        string PRIMARY_CONTACT_NAME
+        string PRIMARY_CONTACT_TITLE
+        string MOBILE
+        string LANDPHONE
+        string TAX_ID
+        string BANK_NAME
+        string BANK_ACCOUNT_NUMBER
+        string CONTRACT_ID
+        string CONTRACT_DATE "String for robust ingestion"
+        string CONTRACT_EXPIRATION_DATE "String for robust ingestion"
+        string PAYMENT_TERMS
+        string SUPPLIER_STATUS
+        
+        string VALIDATION_STATUS "PENDING / PASS / FAIL"
+        string ERROR_MESSAGE "Failure reason"
+        string UPDATED_BY "UserEmail()"
+        timestamp UPDATED_AT "Upload timestamp"
+    }
+
+    Supplier_Capacity_Staging {
+        string SUPPLIER_ID FK "Must exist in Supplier_Information"
+        string SUPPLIER_NAME "Denormalized"
+        string BOM_UPDATE FK "Must exist in BOM_Data (eventually)"
+        
+        string LEAD_TIME "String for robust ingestion"
+        string UNIT_PRICE "String for robust ingestion"
+        string MOQ "String for robust ingestion"
+        
+        string VALIDATION_STATUS "PENDING / PASS / FAIL"
+        string ERROR_MESSAGE "e.g., Unknown Supplier: Please create..."
+        string UPDATED_BY "UserEmail()"
+        timestamp UPDATED_AT "Upload timestamp"
+    }
+
+    %% =========================================================
+    %% 🛒 PIPELINE B: PROCUREMENT TRANSACTIONS (Bottom Lane)
+    %% =========================================================
+
+    %% 1. Input (From M2)
+    PR_Draft {
+        string DRAFT_PR_ID PK "PRD_ + MD5(DEMAND_ID + Type)"
+        string DEMAND_ID FK "Traceability to M1 (DEM_...)"
+        string BOM_UPDATE FK "Material Code"
+        
+        string VPO "Traceability to Production Order (NULL allowed)"
+        string ORDER_LIST_NOTE "Strategy Note (Internal Context)"
+        
+        float SHORTAGE_QTY "Unfilled Demand"
+        string FULFILLMENT_MODE "PUBLIC / PRIVATE"
+        string REQUEST_TYPE "SHORTAGE / PRIVATE_ORDER"
+        date REQUESTED_DELIVERY_DATE "Target Delivery Date"
+        timestamp CREATED_AT "When Draft was Generated"
+    }
+
+    %% 2. The Sourcing Decision Layer (User Action)
+    PR_Staging {
+        string PR_STAGING_ID PK "Holds DRAFT_PR_ID (Persists Identity)"
+        string BOM_UPDATE FK "Material Code"
+        string SUPPLIER_ID FK "Selected Vendor"
+        string SUPPLIER_NAME "Denormalized for validation"
+        
+        float QTY_TO_APPROVE "MOQ-adjusted quantity"
+        string FULFILLMENT_MODE "PUBLIC / PRIVATE"
+        float FINAL_UNIT_PRICE "Override or Master Price"
+        date REQUESTED_DELIVERY_DATE "Target Delivery Date"
+        
+        string VPO "Project Code"
+        string PIC "Session Owner (Assigned Buyer)"
+        string DATE_CODE "Delivery Batch Code (e.g., 2025-W01)"
+        
+        string VALIDATION_STATUS "PENDING / VALID / ERROR"
+        string VALIDATION_LOG "e.g., Price variance > 10%"
+        string UPDATED_BY "UserEmail()"
+        timestamp UPDATED_AT "Upload timestamp"
+    }
+
+    PR_Final {
+        string PR_FINAL_ID PK "Holds DRAFT_PR_ID (Stable Identity)"
+        string SUPPLIER_ID FK "Validated Vendor"
+        string SUPPLIER_NAME "Denormalized"
+        string BOM_UPDATE FK "Material Code"
+        
+        float QTY_APPROVED "Final Quantity"
+        float FINAL_UNIT_PRICE "Contracted Price"
+        string FULFILLMENT_MODE "PUBLIC / PRIVATE"
+        date REQUESTED_DELIVERY_DATE "Target Delivery Date"
+        
+        string VPO "Project Code (Passed from M2)"
+        string ORDER_LIST_NOTE "Strategy Note (Persisted from M1)"
+        string DATE_CODE "Delivery Batch Code"
+        
+        string CONSOLIDATION_STATUS "OPEN / CONSOLIDATED / CANCELLED"
+        string PIC "Session Owner (Buyer)"
+        string UPDATED_BY "Last System User"
+        timestamp UPDATED_AT "Last Modified"
+    }
+
+    %% =========================================================
+    %% 📊 THE SOURCING INTELLIGENCE VIEW
+    %% Ref: SQL_Vault [457-494]
+    %% =========================================================
+    Sourcing_Feed_VIEW {
+        string DRAFT_PR_ID "From PR_Draft (Input)"
+        string BOM_UPDATE "Material Code"
+        string VPO "Project Code"
+        
+        string FULFILLMENT_MODE "COALESCE(PR_Final, PR_Draft) - Feedback Loop"
+        string BOM_DESCRIPTION "From BOM_Data (Readability)"
+        float SHORTAGE_QTY "From PR_Draft (Demand)"
+        date REQUESTED_DELIVERY_DATE "COALESCE(PR_Final, PR_Draft) - Feedback Loop"
+        
+        string ASSIGNED_SUPPLIER_NAME "COALESCE(PR_Final, Best_Supplier, 'NO SOURCE')"
+        string KNOWN_CAPACITY_OPTIONS "Supplier1: $X (Nd) | Supplier2: $Y (Md)"
+        string PIC "COALESCE(PR_Final, BOM_Data.PIC, 'Unassigned')"
+        string ORDER_LIST_NOTE "COALESCE(PR_Final, PR_Draft) - Strategy Context"
+        
+        string DATE_CODE "From PR_Final (Feedback for Zone B)"
+        float FINAL_UNIT_PRICE "From PR_Final (Feedback for Zone B)"
+    }
+
+    %% =========================================================
+    %% ⚙️ THE CONSOLIDATION ENGINE (The Factory)
+    %% Ref: SQL_Vault [535-608]
+    %% =========================================================
+    PO_Consolidation_Event {
+        string CONSOLIDATION_BATCH_ID PK "MD5(Sorted PR_IDs)"
+        string BUYER_PIC "Who ran the consolidation"
+        string CONSOLIDATION_RULE "AUTO / MANUAL_OVERRIDE / SAME_SUPPLIER"
+        timestamp CONSOLIDATED_AT "When consolidation ran"
+        int TOTAL_PR_COUNT "How many PRs consolidated"
+        int TOTAL_PO_COUNT "How many POs created"
+    }
+
+    %% =========================================================
+    %% 🔗 THE JUNCTION TABLE (Audit Trail)
+    %% =========================================================
+    PR_PO_Consolidation {
+        string CONSOLIDATION_LINK_ID PK "MD5(Batch + PR_ID)"
+        string CONSOLIDATION_BATCH_ID FK "Link to Event"
+        string PR_FINAL_ID FK "Link to PR_Final"
+        string PO_DOCUMENT_ID FK "Link to PO_Header"
+        
+        string CONSOLIDATION_REASON "AUTO_GROUPED / MANUALLY_COMBINED / SPLIT_ORDER"
+        float QTY_ALLOCATED_TO_PO "If PR split across multiple POs"
+        timestamp LINKED_AT "When link was created"
+    }
+
+    %% =========================================================
+    %% 📄 OUTPUT DOCUMENTS (The Firewall Result)
+    %% =========================================================
+    PO_Header {
+        string PO_DOCUMENT_ID PK "MD5(Supplier + Date + Batch)"
+        string CONSOLIDATION_BATCH_ID FK "Link to Event"
+        string SUPPLIER_ID FK "Link to Supplier_Information"
+        string SUPPLIER_NAME "Denormalized"
+        string PO_NUMBER_REF "PO-YYYYMMDD-XXXX (Human-Readable)"
+        
+        date ORDER_DATE "The Legal Date of PO"
+        float TOTAL_AMOUNT "Sum of all line totals"
+        int LINE_COUNT "How many items"
+        date PO_DUE_DATE "MIN(PO_Lines.REQUESTED_DELIVERY_DATE)"
+        
+        string PO_STATUS "DRAFT / ISSUED / CONFIRMED"
+        string PO_ORIGIN "SYSTEM / DIRECT_INJECTION / MANUAL_MTS / ZXH_AUTO_SYNC"
+        string FILELINK "PDF Link (NULL until issued)"
+        string CREATED_BY "UserEmail()"
+        timestamp CREATED_AT "When PO was created"
+        timestamp ISSUED_AT "When status -> ISSUED (NULL if DRAFT)"
+    }
+
+    PO_Line {
+        string PO_LINE_ID PK "MD5(Doc + BOM + Price + VPO + DateCode)"
+        string PO_DOCUMENT_ID FK "Link to PO_Header"
+        
+        string PIC "Session Owner (Persisted from PR_Final)"
+        
+        string BOM_UPDATE FK "Material Code"
+        string FULFILLMENT_MODE "PUBLIC / PRIVATE"
+        string PR_FINAL_ID FK "Fast Trace (1:1 or N:1 if merged)"
+        
+        float ORDER_QTY "Aggregated from N PR_Finals"
+        float UNIT_PRICE "Contracted Price"
+        float LINE_TOTAL "ORDER_QTY * UNIT_PRICE"
+        
+        string VPO "Project Code (Passed from PR)"
+        string PO_LINE_NOTE "External Instruction (NULL - Firewall Blocks ORDER_LIST_NOTE)"
+        
+        date SYSTEM_SUGGESTED_REQUESTED_DATE "MIN(PRs.REQUESTED_DELIVERY_DATE)"
+        date BUYER_REQUESTED_DATE "Manual Override (NULL if accepted System)"
+        string DATE_CODE "Delivery Batch Code (Passed from PR)"
+        
+        int LINE_NUMBER "Sequence in PO (ROW_NUMBER)"
+        timestamp CREATED_AT "When line was created"
+    }
+
+    %% =========================================================
+    %% 🚚 HANDOVER TO LOGISTICS (M4)
+    %% Ref: Config_Schema [692-737]
+    %% =========================================================
+    PO_Line_Tracking {
+        string PO_LINE_ID PK "Matches PO_Line.PO_LINE_ID"
+        string PO_DOCUMENT_ID FK "Header Link"
+        string BOM_UPDATE FK "Material Code"
+        string FULFILLMENT_MODE "PUBLIC / PRIVATE"
+        
+        string VPO "Project Traceability"
+        string PO_LINE_NOTE "Buyer's Instruction (External)"
+        string PIC "Session Owner (For Portal Filter)"
+        
+        float ORDER_QTY "Static from PO"
+        float CONFIRMED_QTY "NULL (Pending Supplier Feedback)"
+        float LOADED_QTY "NULL (Pending Supplier Feedback)"
+        float ACTUAL_RECEIVED_QTY "NULL (Pending Supplier Feedback)"
+        
+        date FINAL_REQUESTED_DELIVERY_DATE "COALESCE(BUYER_OVERRIDE, SYSTEM_SUGGESTED)"
+        date AGREED_DELIVERY_DATE "NULL (Pending Supplier Feedback)"
+        date CURRENT_ETA "NULL (Pending Supplier Feedback)"
+        date ACTUAL_ARRIVAL_DATE "NULL (Pending Supplier Feedback)"
+        
+        string SUPPLIER_FEEDBACK_NOTE "NULL (Pending Supplier Feedback)"
+        
+        string STATUS "ISSUED (Initial State)"
+        string CLOSURE_REASON "NULL (Open)"
+        boolean IS_ACTIVE "TRUE (Active)"
+        
+        string DATE_CODE "Delivery Batch Code"
+        timestamp INITIALIZED_AT "When PO was issued"
+        string UPDATED_BY "SYSTEM_HANDOVER (Initial)"
+        timestamp UPDATED_AT "CURRENT_TIMESTAMP"
+        timestamp LAST_SEEN_IN_SYNC "Orphan detection (ZXH AutoSync)"
+    }
+
+    %% =========================================================
+    %% 🏭 DIRECT INJECTION MODULE (NEW)
+    %% Ref: Config_Schema [799-863]
+    %% =========================================================
+    PO_Direct_Injection_Staging {
+        string SESSION_ID PK "INJ_{PIC}_{TIMESTAMP}"
+        integer ROW_NUMBER PK "Composite Key"
+        
+        string PIC "Session Owner"
+        string SUPPLIER_NAME "User Input (Fuzzy Match)"
+        string BOM_UPDATE "Material Code"
+        
+        float ORDER_QTY
+        float UNIT_PRICE
+        float CONFIRMED_QTY
+        float LOADED_QTY
+        
+        date ORIGINAL_ORDER_DATE
+        date FINAL_REQUESTED_DELIVERY_DATE
+        date AGREED_DELIVERY_DATE
+        date CURRENT_ETA
+        
+        string LEGACY_PO_REF "Historical PO Reference"
+        string VPO "Project Code"
+        string PO_LINE_NOTE "Buyer Instruction"
+        
+        string VALIDATION_STATUS "PENDING / PASS / FAIL"
+        string ERROR_MESSAGE "SP Feedback"
+        
+        string RESOLVED_SUPPLIER_ID "SP Derived"
+        string DERIVED_FULFILLMENT_MODE "SP Derived"
+        string GENERATED_PO_DOC_ID "SP Derived"
+        string GENERATED_PO_LINE_ID "SP Derived"
+        string DERIVED_STATUS "SP Derived"
+        
+        string UPLOADED_BY "UserEmail()"
+        timestamp UPLOADED_AT "System Timestamp"
+    }
+
+    %% =========================================================
+    %% ⚙️ PROCESS NODES (The Logic Engines)
+    %% =========================================================
+    SP_M3_MERGE_SUPPLIER_INFO {
+        string PROCESS_TYPE "Stored Procedure (SCD1 Upsert)"
+        string LOGIC_FLOW "1. Validate (Supplier_ID not NULL) | 2. MERGE (Update or Insert) | 3. Cleanup Staging"
+        
+        string KEY_LOGIC "MERGE ON SUPPLIER_ID (Upsert Pattern)"
+    }
+
+    SP_M3_MERGE_SUPPLIER_CAPACITY {
+        string PROCESS_TYPE "Stored Procedure (SCD1 Upsert)"
+        string LOGIC_FLOW "1. Self-Clean (Remove Duplicates) | 2. Validate (Supplier exists) | 3. MERGE (Update or Insert) | 4. Cleanup Staging"
+        
+        string KEY_LOGIC_1 "ID Gen: MD5(SUPPLIER_ID + BOM_UPDATE)"
+        string KEY_LOGIC_2 "MERGE ON (SUPPLIER_ID, BOM_UPDATE)"
+    }
+
+    SP_M3_MERGE_PR_DECISIONS {
+        string PROCESS_TYPE "Stored Procedure (Upsert with Validation)"
+        string LOGIC_FLOW "1. Batch Latest | 2. Validate (Supplier + Qty) | 3. MERGE PR_Final | 4. Close Staging"
+        
+        string KEY_LOGIC_1 "Recover ORDER_LIST_NOTE from PR_Draft (JOIN)"
+        string KEY_LOGIC_2 "MERGE ON PR_STAGING_ID (Holds DRAFT_PR_ID)"
+    }
+
+    SP_M3_CONSOLIDATE_BATCH {
+        string PROCESS_TYPE "Stored Procedure (Transaction-Safe)"
+        string LOGIC_FLOW "1. Validate PRs | 2. Pre-Calc IDs (Idempotency) | 3. BEGIN TRANSACTION | 4. Event Log | 5. Header Gen | 6. Line Gen (VPO + DateCode Grouping) | 7. Junction Link | 8. Update PR Status | 9. COMMIT"
+        
+        string KEY_LOGIC_1 "ID Gen: MD5(Sorted PR_IDs) - Deterministic Batch ID"
+        string KEY_LOGIC_2 "Idempotency Check: IF PO_DOCUMENT_ID EXISTS THEN RETURN"
+        string KEY_LOGIC_3 "Line Grouping: GROUP BY (BOM, Price, VPO, DateCode)"
+        string KEY_LOGIC_4 "Firewall: PO_LINE_NOTE = NULL (Blocks ORDER_LIST_NOTE)"
+    }
+
+    SP_M3_ATOMIC_ISSUE {
+        string PROCESS_TYPE "Stored Procedure (Transaction-Safe)"
+        string LOGIC_FLOW "1. Idempotency Check | 2. BEGIN TRANSACTION | 3. Update Header (ISSUED) | 4. Call M4 Handover | 5. COMMIT or ROLLBACK"
+        
+        string KEY_LOGIC "Atomic Block: Header Update + Tracking Init (All-or-Nothing)"
+    }
+
+    SP_M4_INITIALIZE_TRACKING {
+        string PROCESS_TYPE "Stored Procedure (Handover from M3)"
+        string LOGIC_FLOW "INSERT INTO PO_Line_Tracking (Captures PIC, VPO, PO_LINE_NOTE, DATE_CODE)"
+        
+        string KEY_LOGIC "Ownership Baton Pass: PIC flows from PO_Line -> Tracking"
+    }
+
+    SP_INJECT_DIRECT_PO {
+        string PROCESS_TYPE "Stored Procedure (Direct Injection)"
+        string LOGIC_FLOW "1. Validate Staging | 2. Resolve Supplier | 3. Derive Fulfillment Mode | 4. Create PO_Header | 5. Create PO_Line | 6. Init PO_Line_Tracking"
+        
+        string KEY_LOGIC_1 "PO_ORIGIN = DIRECT_INJECTION"
+        string KEY_LOGIC_2 "ID Prefix: INJ_DOC_ / INJ_LINE_"
+        string KEY_LOGIC_3 "Bypasses normal M3 consolidation flow"
+    }
+
+    %% =========================================================
+    %% RELATIONSHIPS
+    %% =========================================================
+
+    %% Pipeline A: Master Data (Self-Healing)
+    Supplier_Information_Staging }|..|| SP_M3_MERGE_SUPPLIER_INFO : "triggers (User Upload)"
+    SP_M3_MERGE_SUPPLIER_INFO ||--|| Supplier_Information : "upserts_master (1:1)"
+    
+    Supplier_Capacity_Staging }|..|| SP_M3_MERGE_SUPPLIER_CAPACITY : "triggers (User Upload)"
+    SP_M3_MERGE_SUPPLIER_CAPACITY ||--|| Supplier_Capacity : "upserts_master (1:1)"
+    
+    Supplier_Information ||--|{ Supplier_Capacity : "defines_capacity (1:N)"
+
+    %% Pipeline B: Transaction Flow
+    PR_Draft ||..|| Sourcing_Feed_VIEW : "feeds_ui (1:1 Read-Only)"
+    Sourcing_Feed_VIEW }|..|| PR_Staging : "user_edits_generate (1:1 User Action)"
+    
+    PR_Staging }|..|| SP_M3_MERGE_PR_DECISIONS : "triggers (User Upload)"
+    SP_M3_MERGE_PR_DECISIONS ||--|| PR_Final : "promotes_valid (1:1 Upsert)"
+    
+    %% The Feedback Loop (Critical for UI)
+    PR_Final }|..|| Sourcing_Feed_VIEW : "feeds_back (Populates Defaults)"
+
+    %% Consolidation Flow
+    PR_Final }|..|| SP_M3_CONSOLIDATE_BATCH : "input_to (N:1 Batch)"
+    SP_M3_CONSOLIDATE_BATCH ||--|| PO_Consolidation_Event : "logs_event (1:1)"
+    SP_M3_CONSOLIDATE_BATCH ||--|{ PO_Header : "creates_doc (1:N)"
+    PO_Header ||--|{ PO_Line : "contains_lines (1:N)"
+    
+    %% Junction (The Audit Trail)
+    SP_M3_CONSOLIDATE_BATCH ||--|{ PR_PO_Consolidation : "maps_links (1:N)"
+    PR_Final ||--|{ PR_PO_Consolidation : "tracked_in (1:N or 1:1 if no merge)"
+    PO_Header ||--|{ PR_PO_Consolidation : "sources_from (1:N)"
+    PO_Consolidation_Event ||--|{ PR_PO_Consolidation : "manages (1:N)"
+    
+    %% Fast Trace
+    PR_Final ||--o{ PO_Line : "fast_link (1:N - FK for speed)"
+    
+    %% Issuance & Handover
+    PO_Header }|..|| SP_M3_ATOMIC_ISSUE : "triggers (User Action)"
+    SP_M3_ATOMIC_ISSUE ||..|| SP_M4_INITIALIZE_TRACKING : "chains_atomically (1:1)"
+    PO_Line ||--|| PO_Line_Tracking : "initializes_via_SP (1:1)"
+
+    %% Self-Healing Feedback (From Sourcing Decision)
+    PR_Staging }|..|| Supplier_Capacity_Staging : "heals_capacity (If New Price)"
+    PR_Staging }|..|| Supplier_Information_Staging : "heals_vendor (If New Supplier)"
+
+    %% Pipeline C: DIRECT INJECTION (NEW - Bypass Path)
+    PO_Direct_Injection_Staging }|..|| SP_INJECT_DIRECT_PO : "triggers (User Upload)"
+    SP_INJECT_DIRECT_PO ||--|{ PO_Header : "creates_doc (PO_ORIGIN=DIRECT_INJECTION)"
+    SP_INJECT_DIRECT_PO ||--|{ PO_Line : "creates_lines (INJ_LINE_ prefix)"
+    SP_INJECT_DIRECT_PO ||--|{ PO_Line_Tracking : "initializes_tracking (Atomic)"
+
+    %% =========================================================
+    %% CLASS ASSIGNMENTS
+    %% =========================================================
+    class Supplier_Information,Supplier_Capacity master
+    class Supplier_Information_Staging,Supplier_Capacity_Staging,PR_Staging staging
+    class PR_Final document
+    class PR_Draft draft
+    class PO_Header,PO_Line,PO_Line_Tracking document
+    class PO_Consolidation_Event event
+    class PR_PO_Consolidation junction
+    class Sourcing_Feed_VIEW view
+    class PO_Direct_Injection_Staging input
+    class SP_M3_MERGE_SUPPLIER_INFO,SP_M3_MERGE_SUPPLIER_CAPACITY,SP_M3_MERGE_PR_DECISIONS,SP_M3_CONSOLIDATE_BATCH,SP_M3_ATOMIC_ISSUE,SP_M4_INITIALIZE_TRACKING,SP_INJECT_DIRECT_PO process_node

@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Báo cáo phân tích hệ thống Assign Sourcing cho nhóm vật tư PUBLIC - Chì">
+    <title>Giải pháp | ISC Report V4 | ISC Supply Chain</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Syne:wght@700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="Style.css">
+
+</head>
+<body>
+    <nav class="sidebar">
+        <div class="sidebar-header">
+            <div class="logo-circle"><i class="fa-solid fa-chart-pie"></i></div>
+            <div class="brand">
+                <h2>ISC Report</h2>
+                <p>Data & Analytics</p>
+            </div>
+        </div>
+        
+        <ul class="nav-links">
+            <li><a href="index.html" id="nav_index"><span class="icon-wrap"><i class="fa-solid fa-bolt"></i></span>0. Tóm tắt điều hành</a></li>
+            <li><a href="p1_tolerance.html" id="nav_p1"><span class="icon-wrap"><i class="fa-solid fa-scale-balanced"></i></span>1. P1: Tolerance</a></li>
+            <li><a href="p2_vpo_fragmentation.html" id="nav_p2"><span class="icon-wrap"><i class="fa-solid fa-cubes-stacked"></i></span>2. P2: VPO Fragmentation</a></li>
+            <li><a href="p3_warehouse.html" id="nav_p3"><span class="icon-wrap"><i class="fa-solid fa-warehouse"></i></span>3. P3: Issuance Laziness</a></li>
+            <li><a href="validation.html" id="nav_valid"><span class="icon-wrap"><i class="fa-solid fa-laptop-code"></i></span>4. Kiểm chứng Logic</a></li>
+            <li><a href="solutions.html" id="nav_sol" class="active"><span class="icon-wrap"><i class="fa-solid fa-lightbulb"></i></span>5. Đề xuất Thay đổi</a></li>
+            <li><a href="conclusion.html" id="nav_conc"><span class="icon-wrap"><i class="fa-solid fa-book-open"></i></span>6. Hướng dẫn đọc & Kết luận</a></li>
+        </ul>
+
+        <div class="sidebar-footer">
+            <p>Version V4 – 2026-03</p>
+        </div>
+    </nav>
+    <main class="content">
+        <header class="top-header" id="header">
+            <div class="header-content">
+                <div class="title-area">
+                    <span class="eyebrow">Báo cáo phân tích chuyên sâu · PUBLIC – Chì</span>
+                    <h1>Assign Sourcing <span class="text-gradient">Analysis Report</span></h1>
+                </div>
+                <div class="badges">
+                    <span class="badge badge-glass tooltip"
+                        data-tooltip="Ban lãnh đạo, phòng Kế hoạch SX, Kho, Mua hàng">
+                        <i class="fa-solid fa-users"></i> Ban quản lý &amp; Operations
+                    </span>
+                    <span class="badge badge-accent"><i class="fa-solid fa-code-commit"></i> V4 · 2026-03</span>
+                </div>
+            </div>
+        </header>
+        
+        <section id="logic-validation" class="section-container animate-on-scroll">
+            <div class="section-header">
+                <h2><i class="fa-solid fa-laptop-code"></i> 4. Các Test Kiểm chứng Logic</h2>
+                <div class="divider"></div>
+            </div>
+            <p class="mb-6">Đã dùng Python + BigQuery (Part 2 &amp; Part 3) để chạy bộ <strong>~20 câu SQL</strong> kiểm
+                chứng toàn bộ giả thuyết P1, P2, P3. Kết quả đều <strong>ủng hộ</strong> 3 nguyên nhân đã trình bày.</p>
+            <div class="validation-grid">
+                <div class="val-card">
+                    <div class="val-icon"><i class="fa-solid fa-check-double text-success"></i> Nhóm A · P1 Validate
+                    </div>
+                    <p style="font-size:0.9rem;">Thống kê phân bố BOM_TOLERANCE cho Chì. So sánh tổng demand khi dùng CS
+                        vs 10% cố định. Đào sâu BOM lệch nhiều nhất (302014740). Kết quả: xác nhận ~<strong>20.900
+                            đ.vị</strong> sai khác.</p>
+                </div>
+                <div class="val-card">
+                    <div class="val-icon"><i class="fa-solid fa-check-double text-success"></i> Nhóm B · P2 Validate
+                    </div>
+                    <p style="font-size:0.9rem;">Liệt kê BOM xuất hiện trên nhiều VPO. Tính tổng lượng "lãng phí" khi
+                        CEILING từng VPO. Tính tổng tiết kiệm nếu gom tất cả PUBLIC theo BOM.</p>
+                </div>
+                <div class="val-card">
+                    <div class="val-icon"><i class="fa-solid fa-check-double text-success"></i> Nhóm C · P3 Validate
+                    </div>
+                    <p style="font-size:0.9rem;">So sánh tổng phát theo BOM với tổng demand. Tìm VPO bị phát nhiều hơn
+                        demand (dấu hiệu dồn phát). Kiểm tra tính nhất quán tổng phát BOM vs cộng dồn VPO.</p>
+                </div>
+            </div>
+        </section>
+        
+        <footer class="footer mt-12">
+            <p>Báo cáo Nội bộ ISC Supply Chain &nbsp;·&nbsp; Tháng 03–2026 &nbsp;·&nbsp; BRS V4 &nbsp;·&nbsp; <em>PUBLIC
+                    – Chì</em></p>
+        </footer>
+    </main>
+    
+    <script>
+        document.querySelectorAll('.animate-on-scroll').forEach(el => {
+            el.classList.add('is-visible'); // Trigger directly since chunked pages 
+        });
+    </script>
+    
+</body>
+</html>
