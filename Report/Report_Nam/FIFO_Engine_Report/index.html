@@ -104,8 +104,8 @@
         .eq-shortage { background: var(--danger-bg); color: var(--danger); border-color: rgba(248,113,113,0.3); }
 
         /* SVG */
-        .svg-wrap { margin: 1.5rem 0; overflow-x: auto; }
-        .svg-wrap svg { display: block; margin: 0 auto; max-width: 100%; height: auto; }
+        .svg-wrap { margin: 1.5rem 0; overflow-x: auto; position: relative; z-index: 1; }
+        .svg-wrap svg { display: block; margin: 0 auto; max-width: 100%; height: auto; overflow: visible; }
 
         /* HERO */
         .hero { padding: 4rem 0 2rem; text-align: center; }
@@ -114,12 +114,12 @@
         .hero p { color: var(--text-muted); font-size: 1.05rem; max-width: 650px; margin: 0 auto; }
 
         /* FUNDAMENTAL CARDS */
-        .fund-card { background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 1.75rem; margin-bottom: 1.5rem; position: relative; overflow: hidden; }
-        .fund-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: var(--secondary); }
-        .fund-num { position: absolute; top: 12px; right: 16px; font-size: 2.5rem; font-weight: 900; color: rgba(129,140,248,0.1); line-height: 1; }
-        .fund-card h3 { font-size: 1.1rem; font-weight: 700; margin-bottom: 0.5rem; color: var(--primary); }
-        .fund-card .fund-desc { font-size: 0.9rem; color: var(--text-muted); margin-bottom: 1rem; line-height: 1.6; }
-        .fund-formula { background: rgba(15,23,42,0.8); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 1rem; font-family: 'SF Mono','Cascadia Code',monospace; font-size: 0.85rem; margin: 0.75rem 0; overflow-x: auto; }
+        .fund-card { background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 1.75rem; margin-bottom: 1.5rem; position: relative; overflow: visible; }
+        .fund-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: var(--secondary); border-radius: var(--radius-md) var(--radius-md) 0 0; }
+        .fund-num { position: absolute; top: 12px; right: 16px; font-size: 2.5rem; font-weight: 900; color: rgba(129,140,248,0.1); line-height: 1; pointer-events: none; z-index: 0; }
+        .fund-card h3 { font-size: 1.1rem; font-weight: 700; margin-bottom: 0.5rem; color: var(--primary); position: relative; z-index: 1; }
+        .fund-card .fund-desc { font-size: 0.9rem; color: var(--text-muted); margin-bottom: 1rem; line-height: 1.6; position: relative; z-index: 1; }
+        .fund-formula { background: rgba(15,23,42,0.8); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 1rem; font-family: 'SF Mono','Cascadia Code',monospace; font-size: 0.85rem; margin: 0.75rem 0; overflow-x: auto; position: relative; z-index: 1; }
 
         /* COMPARE GRID */
         .compare-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
@@ -319,68 +319,126 @@
     <!-- 2.3 Tolerance -->
     <div class="fund-card">
         <div class="fund-num">03</div>
-        <h3>Tolerance &mdash; CS vs LP</h3>
-        <div class="fund-desc">Tolerance l&#224; % hao h&#7909;t cho ph&#233;p. <strong>CS tolerance</strong> (M2 d&#249;ng) thay &#273;&#7893;i theo t&#7915;ng BOM (4&ndash;13%). <strong>LP tolerance</strong> c&#7889; &#273;&#7883;nh 10% cho t&#7845;t c&#7843;.</div>
+        <h3>Tolerance &mdash; CS vs ISC (LP)</h3>
+        <div class="fund-desc">Tolerance l&#224; % hao h&#7909;t cho ph&#233;p, c&#7897;ng th&#234;m v&#224;o nhu c&#7847;u &#273;&#7875; &#273;&#7843;m b&#7843;o mua &#273;&#7911;. Hai ngu&#7891;n tolerance kh&#225;c nhau d&#7851;n &#273;&#7871;n k&#7871;t qu&#7843; kh&#225;c nhau.</div>
         <div class="svg-wrap">
-            <svg viewBox="0 0 600 120" xmlns="http://www.w3.org/2000/svg" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif">
-                <!-- M2 bar -->
-                <text x="10" y="30" fill="#34d399" font-size="11" font-weight="700">M2 (CS)</text>
-                <rect x="90" y="16" width="28" height="24" rx="4" fill="rgba(52,211,153,0.25)" stroke="#34d399" stroke-width="1"/>
-                <text x="104" y="32" text-anchor="middle" fill="#34d399" font-size="9" font-weight="700">4%</text>
-                <rect x="128" y="16" width="49" height="24" rx="4" fill="rgba(52,211,153,0.35)" stroke="#34d399" stroke-width="1"/>
-                <text x="152" y="32" text-anchor="middle" fill="#34d399" font-size="9" font-weight="700">7%</text>
-                <rect x="187" y="16" width="70" height="24" rx="4" fill="rgba(52,211,153,0.5)" stroke="#34d399" stroke-width="1"/>
-                <text x="222" y="32" text-anchor="middle" fill="#34d399" font-size="9" font-weight="700">10%</text>
-                <rect x="267" y="16" width="91" height="24" rx="4" fill="rgba(52,211,153,0.65)" stroke="#34d399" stroke-width="1"/>
-                <text x="312" y="32" text-anchor="middle" fill="#34d399" font-size="9" font-weight="700">13%</text>
-                <text x="380" y="32" fill="#94a3b8" font-size="9">Thay &#273;&#7893;i theo BOM</text>
+            <svg viewBox="0 0 750 180" xmlns="http://www.w3.org/2000/svg" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif">
+                <!-- CS Tolerance row -->
+                <text x="10" y="30" fill="#34d399" font-size="11" font-weight="700">CS (HQ)</text>
+                <rect x="100" y="16" width="28" height="24" rx="4" fill="rgba(52,211,153,0.25)" stroke="#34d399" stroke-width="1"/>
+                <text x="114" y="32" text-anchor="middle" fill="#34d399" font-size="9" font-weight="700">3%</text>
+                <rect x="138" y="16" width="42" height="24" rx="4" fill="rgba(52,211,153,0.35)" stroke="#34d399" stroke-width="1"/>
+                <text x="159" y="32" text-anchor="middle" fill="#34d399" font-size="9" font-weight="700">5%</text>
+                <rect x="190" y="16" width="56" height="24" rx="4" fill="rgba(52,211,153,0.45)" stroke="#34d399" stroke-width="1"/>
+                <text x="218" y="32" text-anchor="middle" fill="#34d399" font-size="9" font-weight="700">7%</text>
+                <rect x="256" y="16" width="84" height="24" rx="4" fill="rgba(52,211,153,0.55)" stroke="#34d399" stroke-width="1"/>
+                <text x="298" y="32" text-anchor="middle" fill="#34d399" font-size="9" font-weight="700">12%</text>
+                <text x="360" y="30" fill="#94a3b8" font-size="9">Thay &#273;&#7893;i theo BOM &mdash; t&#7915; China HQ</text>
 
-                <!-- LP bar -->
-                <text x="10" y="80" fill="#60a5fa" font-size="11" font-weight="700">LP</text>
-                <rect x="90" y="66" width="350" height="24" rx="4" fill="rgba(96,165,250,0.2)" stroke="#60a5fa" stroke-width="1"/>
-                <text x="265" y="82" text-anchor="middle" fill="#60a5fa" font-size="11" font-weight="800">Lu&#244;n 10%</text>
-                <text x="460" y="82" fill="#94a3b8" font-size="9">C&#7889; &#273;&#7883;nh cho t&#7845;t c&#7843;</text>
+                <!-- LP Tolerance row -->
+                <text x="10" y="80" fill="#60a5fa" font-size="11" font-weight="700">LP (ISC)</text>
+                <rect x="100" y="66" width="200" height="24" rx="4" fill="rgba(96,165,250,0.25)" stroke="#60a5fa" stroke-width="1.5"/>
+                <text x="200" y="82" text-anchor="middle" fill="#60a5fa" font-size="10" font-weight="800">M&#7863;c &#273;&#7883;nh 10%</text>
+                <rect x="310" y="66" width="130" height="24" rx="4" fill="rgba(96,165,250,0.15)" stroke="#60a5fa" stroke-width="1" stroke-dasharray="4,3"/>
+                <text x="375" y="82" text-anchor="middle" fill="#60a5fa" font-size="9" font-weight="700">Override: 5&ndash;20%</text>
+                <text x="460" y="80" fill="#94a3b8" font-size="9">Linh ho&#7841;t theo planner</text>
+
+                <!-- Problem callout -->
+                <rect x="100" y="110" width="600" height="55" rx="8" fill="rgba(248,113,113,0.08)" stroke="#f87171" stroke-width="1"/>
+                <text x="120" y="130" fill="#f87171" font-size="10" font-weight="700">V&#7845;n &#273;&#7873; v&#7899;i CS Tolerance:</text>
+                <text x="120" y="148" fill="#94a3b8" font-size="9">CS tolerance t&#7915; China HQ mang t&#237;nh <tspan font-weight="700" fill="#f87171">k&#7929; thu&#7853;t</tspan> (thi&#7871;t k&#7871; s&#7843;n ph&#7849;m), kh&#244;ng ph&#7843;i d&#7919; li&#7879;u s&#7843;n xu&#7845;t th&#7921;c t&#7871; c&#7911;a ISC.</text>
+                <text x="120" y="160" fill="#94a3b8" font-size="9">SC team kh&#244;ng tin t&#432;&#7903;ng &#273;&#7875; d&#249;ng tr&#7921;c ti&#7871;p &rarr; LP d&#249;ng buffer ri&#234;ng (m&#7863;c &#273;&#7883;nh 10%, override theo NL).</text>
             </svg>
+        </div>
+        <div class="callout callout-warning" style="margin-top:0.5rem">
+            <strong>T&#7841;i sao LP kh&#244;ng d&#249;ng CS tolerance?</strong>
+            CS tolerance &#273;&#7871;n t&#7915; b&#7897; ph&#7853;n thi&#7871;t k&#7871; (China HQ), ph&#7843;n &#225;nh ti&#234;u chu&#7849;n k&#7929; thu&#7853;t s&#7843;n ph&#7849;m &mdash; kh&#244;ng ph&#7843;i d&#7919; li&#7879;u s&#7843;n xu&#7845;t th&#7921;c t&#7871; m&#224; SC c&#243; th&#7875; tham chi&#7871;u.
+            V&#236; v&#7853;y &#273;&#7897;i mua (SC) d&#249;ng buffer ri&#234;ng: <strong>m&#7863;c &#273;&#7883;nh 10%</strong>, c&#243; th&#7875; <strong>override 5&ndash;20%</strong> (ho&#7863;c h&#417;n) t&#249;y t&#7915;ng nguy&#234;n li&#7879;u theo kinh nghi&#7879;m v&#7853;n h&#224;nh.
         </div>
     </div>
 
-    <!-- 2.4 Issuance Methods -->
-    <div class="fund-card">
+    <!-- 2.4 Issuance Methods — HIGHLIGHTED -->
+    <div class="fund-card" style="border:2px solid var(--secondary);box-shadow:0 0 30px rgba(129,140,248,0.15)">
         <div class="fund-num">04</div>
-        <h3>Ph&#432;&#417;ng ph&#225;p t&#237;nh nhu c&#7847;u &mdash; COMPLETION vs ISSUANCE</h3>
-        <div class="fund-desc">H&#7879; th&#7889;ng c&#243; 2 c&#225;ch t&#237;nh GROSS_DEMAND. <strong>COMPLETION</strong> d&#7921;a v&#224;o s&#7889; &#273;&#227; s&#7843;n xu&#7845;t xong. <strong>ISSUANCE</strong> d&#7921;a v&#224;o s&#7889; nguy&#234;n li&#7879;u &#273;&#227; xu&#7845;t kho. H&#7879; th&#7889;ng t&#7921; ch&#7885;n ph&#432;&#417;ng ph&#225;p ph&#249; h&#7907;p.</div>
+        <h3 style="font-size:1.25rem">H&#7879; th&#7889;ng c&#243; 2 c&#225;ch t&#237;nh GROSS_DEMAND</h3>
+        <div class="fund-desc" style="font-size:0.95rem">
+            C&#7843; hai ph&#432;&#417;ng ph&#225;p <strong>lu&#244;n &#273;&#432;&#7907;c t&#237;nh song song</strong> &#273;&#7871;n m&#7913;c Assign_Sourcing, hi&#7875;n th&#7883; c&#7843; hai cho ng&#432;&#7901;i d&#249;ng ch&#7885;n khi t&#7841;o PR_Final.
+            Ph&#432;&#417;ng ph&#225;p &#273;&#432;&#7907;c ch&#7885;n t&#7921; &#273;&#7897;ng theo nh&#243;m nguy&#234;n li&#7879;u (MAIN_GROUP) qua <strong>Method_Override_Config</strong>.
+        </div>
+
+        <!-- Two method cards side by side -->
+        <div class="compare-grid" style="margin:1.5rem 0">
+            <div class="compare-card" style="background:rgba(251,191,36,0.06);border-color:rgba(251,191,36,0.25)">
+                <h4 style="color:var(--warning);font-size:1rem">COMPLETION</h4>
+                <div class="fund-formula" style="margin:0.75rem 0">
+                    (<span style="color:var(--warning)">Order</span> &minus; <span style="color:var(--success)">Completed</span>) &times; BOM &times; (1+T)
+                </div>
+                <p style="font-size:0.85rem;color:var(--text-muted);line-height:1.6">
+                    D&#7921;a v&#224;o s&#7889; <strong>th&#224;nh ph&#7849;m &#273;&#227; s&#7843;n xu&#7845;t xong</strong>.
+                    <br>VD: &#272;&#417;n 100, xong 20 &rarr; c&#242;n c&#7847;n NL cho 80.
+                </p>
+                <div style="margin-top:0.75rem;padding:0.5rem 0.75rem;background:rgba(251,191,36,0.1);border-radius:6px;font-size:0.8rem">
+                    <strong style="color:var(--warning)">Ph&#249; h&#7907;p:</strong> NL kh&#244;ng c&#243; d&#7919; li&#7879;u xu&#7845;t kho chi ti&#7871;t (VD: Bao b&#236;)
+                </div>
+                <div style="margin-top:0.5rem"><span class="badge badge-warning">M&#7862;C &#272;&#7882;NH</span></div>
+            </div>
+            <div class="compare-card" style="background:rgba(52,211,153,0.06);border-color:rgba(52,211,153,0.25)">
+                <h4 style="color:var(--success);font-size:1rem">ISSUANCE</h4>
+                <div class="fund-formula" style="margin:0.75rem 0">
+                    MAX(0, Order &times; BOM &times; (1+T) &minus; <span style="color:var(--success)">Issued</span>)
+                </div>
+                <p style="font-size:0.85rem;color:var(--text-muted);line-height:1.6">
+                    D&#7921;a v&#224;o s&#7889; <strong>nguy&#234;n li&#7879;u &#273;&#227; xu&#7845;t kho</strong>.
+                    <br>VD: C&#7847;n 200 NL, xu&#7845;t r&#7891;i 150 &rarr; c&#242;n thi&#7871;u 50.
+                </p>
+                <div style="margin-top:0.75rem;padding:0.5rem 0.75rem;background:rgba(52,211,153,0.1);border-radius:6px;font-size:0.8rem">
+                    <strong style="color:var(--success)">Ph&#249; h&#7907;p:</strong> NL c&#243; tracking xu&#7845;t kho t&#7889;t (VD: Ch&#236;)
+                </div>
+                <div style="margin-top:0.5rem"><span class="badge badge-success">CH&#205;NH X&#193;C H&#416;N</span></div>
+            </div>
+        </div>
+
+        <!-- Flow: how it works in practice -->
         <div class="svg-wrap">
-            <svg viewBox="0 0 700 200" xmlns="http://www.w3.org/2000/svg" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif">
-                <!-- Decision diamond -->
-                <polygon points="350,10 430,50 350,90 270,50" fill="rgba(129,140,248,0.15)" stroke="#818cf8" stroke-width="1.5"/>
-                <text x="350" y="46" text-anchor="middle" fill="#818cf8" font-size="9" font-weight="700">C&#243; d&#7919; li&#7879;u</text>
-                <text x="350" y="58" text-anchor="middle" fill="#818cf8" font-size="9" font-weight="700">issuance?</text>
+            <svg viewBox="0 0 750 170" xmlns="http://www.w3.org/2000/svg" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif">
+                <!-- Config box -->
+                <rect x="10" y="10" width="170" height="55" rx="8" fill="rgba(129,140,248,0.12)" stroke="#818cf8" stroke-width="1.5"/>
+                <text x="95" y="32" text-anchor="middle" fill="#818cf8" font-size="9" font-weight="700">Method_Override_Config</text>
+                <text x="95" y="48" text-anchor="middle" fill="#94a3b8" font-size="8">Per MAIN_GROUP</text>
+                <!-- Arrow -->
+                <line x1="180" y1="37" x2="220" y2="37" stroke="#94a3b8" stroke-width="1.5"/>
+                <polygon points="217,32 227,37 217,42" fill="#94a3b8"/>
 
-                <!-- Left: COMPLETION -->
-                <line x1="270" y1="50" x2="130" y2="50" stroke="#fbbf24" stroke-width="1.5"/>
-                <text x="200" y="42" text-anchor="middle" fill="#94a3b8" font-size="8">KH&#212;NG</text>
-                <rect x="20" y="25" width="220" height="90" rx="10" fill="rgba(251,191,36,0.1)" stroke="#fbbf24" stroke-width="1.5"/>
-                <text x="130" y="50" text-anchor="middle" fill="#fbbf24" font-size="11" font-weight="700">COMPLETION</text>
-                <text x="130" y="70" text-anchor="middle" fill="#94a3b8" font-size="9">(Order &minus; Completed) &times; BOM &times; (1+T)</text>
-                <text x="130" y="90" text-anchor="middle" fill="#64748b" font-size="8">D&#249;ng s&#7889; &#273;&#227; s&#7843;n xu&#7845;t xong</text>
-                <text x="130" y="105" text-anchor="middle" fill="#fbbf24" font-size="8" font-weight="700">M&#7863;c &#273;&#7883;nh</text>
+                <!-- Both computed -->
+                <rect x="230" y="5" width="200" height="30" rx="6" fill="rgba(251,191,36,0.1)" stroke="#fbbf24" stroke-width="1"/>
+                <text x="330" y="24" text-anchor="middle" fill="#fbbf24" font-size="9" font-weight="700">GROSS_DEMAND_COMPLETION</text>
+                <rect x="230" y="42" width="200" height="30" rx="6" fill="rgba(52,211,153,0.1)" stroke="#34d399" stroke-width="1"/>
+                <text x="330" y="61" text-anchor="middle" fill="#34d399" font-size="9" font-weight="700">GROSS_DEMAND_ISSUANCE</text>
+                <text x="330" y="88" text-anchor="middle" fill="#818cf8" font-size="8" font-weight="600">C&#7843; hai lu&#244;n &#273;&#432;&#7907;c t&#237;nh</text>
 
-                <!-- Right: ISSUANCE -->
-                <line x1="430" y1="50" x2="570" y2="50" stroke="#34d399" stroke-width="1.5"/>
-                <text x="500" y="42" text-anchor="middle" fill="#94a3b8" font-size="8">C&#211;</text>
-                <rect x="460" y="25" width="220" height="90" rx="10" fill="rgba(52,211,153,0.1)" stroke="#34d399" stroke-width="1.5"/>
-                <text x="570" y="50" text-anchor="middle" fill="#34d399" font-size="11" font-weight="700">ISSUANCE</text>
-                <text x="570" y="70" text-anchor="middle" fill="#94a3b8" font-size="9">MAX(0, Order&times;BOM&times;(1+T) &minus; Issued)</text>
-                <text x="570" y="90" text-anchor="middle" fill="#64748b" font-size="8">D&#249;ng s&#7889; nguy&#234;n li&#7879;u &#273;&#227; xu&#7845;t</text>
-                <text x="570" y="105" text-anchor="middle" fill="#34d399" font-size="8" font-weight="700">Ch&#237;nh x&#225;c h&#417;n</text>
+                <!-- Arrow to Assign_Sourcing -->
+                <line x1="430" y1="37" x2="480" y2="37" stroke="#94a3b8" stroke-width="1.5"/>
+                <polygon points="477,32 487,37 477,42" fill="#94a3b8"/>
 
-                <!-- Both lead to -->
-                <line x1="130" y1="115" x2="130" y2="155" stroke="#94a3b8" stroke-width="1"/>
-                <line x1="570" y1="115" x2="570" y2="155" stroke="#94a3b8" stroke-width="1"/>
-                <line x1="130" y1="155" x2="570" y2="155" stroke="#94a3b8" stroke-width="1"/>
-                <line x1="350" y1="155" x2="350" y2="175" stroke="#94a3b8" stroke-width="1.5"/>
-                <polygon points="345,172 350,180 355,172" fill="#94a3b8"/>
-                <text x="350" y="195" text-anchor="middle" fill="#818cf8" font-size="10" font-weight="700">GROSS_DEMAND_QTY</text>
+                <!-- Assign_Sourcing shows both -->
+                <rect x="490" y="5" width="130" height="65" rx="8" fill="rgba(129,140,248,0.08)" stroke="#818cf8" stroke-width="1.5"/>
+                <text x="555" y="26" text-anchor="middle" fill="#818cf8" font-size="9" font-weight="700">Assign_Sourcing</text>
+                <text x="555" y="42" text-anchor="middle" fill="#94a3b8" font-size="8">Hi&#7875;n th&#7883; c&#7843; 2</text>
+                <text x="555" y="56" text-anchor="middle" fill="#94a3b8" font-size="8">shortage k&#7871;t qu&#7843;</text>
+
+                <!-- Arrow to PR_Final -->
+                <line x1="620" y1="37" x2="660" y2="37" stroke="#94a3b8" stroke-width="1.5"/>
+                <polygon points="657,32 667,37 657,42" fill="#94a3b8"/>
+
+                <!-- PR_Final -->
+                <rect x="670" y="10" width="70" height="55" rx="8" fill="rgba(129,140,248,0.15)" stroke="#818cf8" stroke-width="2"/>
+                <text x="705" y="34" text-anchor="middle" fill="#818cf8" font-size="10" font-weight="800">PR</text>
+                <text x="705" y="50" text-anchor="middle" fill="#818cf8" font-size="10" font-weight="800">Final</text>
+
+                <!-- Bottom note -->
+                <rect x="10" y="105" width="730" height="50" rx="8" fill="rgba(56,189,248,0.06)" stroke="rgba(56,189,248,0.2)" stroke-width="1"/>
+                <text x="30" y="126" fill="#38bdf8" font-size="9" font-weight="700">Quy tr&#236;nh:</text>
+                <text x="30" y="142" fill="#94a3b8" font-size="9">Config ch&#7885;n method per NL group &rarr; C&#7843; 2 method &#273;&#432;&#7907;c t&#237;nh &rarr; Assign_Sourcing hi&#7875;n th&#7883; c&#7843; 2 &rarr; User xem v&#224; ch&#7885;n d&#249;ng cho PR_Final</text>
             </svg>
         </div>
     </div>
@@ -540,7 +598,7 @@
                 <line x1="480" y1="60" x2="500" y2="150" stroke="#38bdf8" stroke-width="1.5"/>
                 <rect x="380" y="30" width="200" height="55" rx="8" fill="rgba(56,189,248,0.1)" stroke="#38bdf8" stroke-width="1.5"/>
                 <text x="480" y="52" text-anchor="middle" fill="#38bdf8" font-size="10" font-weight="700">3. Tolerance %</text>
-                <text x="480" y="70" text-anchor="middle" fill="#94a3b8" font-size="8">LP: 10% c&#7889; &#273;&#7883;nh | M2: 4-13% per BOM</text>
+                <text x="480" y="70" text-anchor="middle" fill="#94a3b8" font-size="8">LP: 10% (override 5-20%) | M2: CS 3-13%</text>
 
                 <!-- Factor 4: VPO Scope (bottom-right) -->
                 <line x1="480" y1="240" x2="500" y2="150" stroke="#34d399" stroke-width="1.5"/>
@@ -574,9 +632,9 @@
                     </tr>
                     <tr>
                         <td><span class="badge badge-info">Tolerance</span></td>
-                        <td>C&#7889; &#273;&#7883;nh 10%</td>
-                        <td>CS cung c&#7845;p: 4&ndash;13% per BOM</td>
-                        <td style="color:var(--text-muted)">T&#249;y BOM</td>
+                        <td>M&#7863;c &#273;&#7883;nh 10%, override 5&ndash;20% per NL</td>
+                        <td>CS t&#7915; HQ: 3&ndash;13% per BOM</td>
+                        <td style="color:var(--text-muted)">T&#249;y BOM (ngu&#7891;n kh&#225;c nhau)</td>
                     </tr>
                     <tr>
                         <td><span class="badge badge-success">VPO Scope</span></td>
